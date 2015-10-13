@@ -1,21 +1,22 @@
 #!/usr/bin/perl
 
-# install dependencies:
+# install dependencies (it can take a while):
 # > cpan install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
 
 #TODO: 
 #   - use File::Map to load files -> extreme memory optimization
 #   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
-#   - fix bad bad bug when using {fuzz}word -e .aspx for example
+#   - create a seperate file with the list of ignored directories when using recursive search
+#   - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly
 
 use strict;
 use warnings;
 use Data::Dumper;
-use Getopt::Long qw(:config no_ignore_case);
+use Getopt::Long qw(:config no_ignore_case);	# Stupid default behaviour.
 use File::Basename qw(dirname);
 use URI::Escape;
 use HTML::Entities;
-use List::MoreUtils qw(uniq);
+use List::MoreUtils qw(uniq); #requires cpan install
 use Term::ANSIColor;
 use Switch;
 use threads;
@@ -24,7 +25,7 @@ use Time::HiRes qw(usleep);
 use Benchmark;
 use IO::Socket::SSL; # for SSL
 use IO::Socket::Socks::Wrapper{}; # for SOCKS
-#Japanese power - 75% increased performance over LWP::UserAgent
+#Japanese power - 75% increased performance over LWP::UserAgent!
 use Furl;
 use Cache::LRU;
 use Net::DNS::Lite qw(inet_aton);
@@ -48,7 +49,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.8.7
+      \/                 \/       \/           \/            \/    v0.8.6 
                                                   HTTP scanner by Henshin 
  
 EOF
@@ -218,6 +219,7 @@ my $addr = inet_aton(( $host =~ s/:\d+$//rg ));
 die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
 my $resolvedip = inet_ntoa($addr);
 
+#die();
 #check recursive
 if($url !~ /\/{fuzz}$/ && defined($recursive)){
 	die "[-] You can't use recursive scans if your {fuzz} keyword is not at the end of your URL\n\n";
@@ -308,6 +310,7 @@ $|++; #autoflush buffers
 #	$method = DEF_METHOD;
 #}
 my @allwords;
+#TODO: fix bad bad bug when using {fuzz}word -e .aspx for example
 foreach my $wordfile (@wordlistfiles){
 	&PrintSequence("\e[K", "[*] Indexing file: $wordfile\r");
 	if(defined($shortnamelist)){
@@ -358,7 +361,7 @@ if(scalar @allwords == 0){
 #}
 
 my %httpheaders;
-#this would save some bandwidth but it affects speed a lot
+#this would save some bandwidth but it affects speed.
 #$httpheaders{'Accept-Encoding'}='gzip';
 
 #set the Accept header because some sites require it
@@ -377,6 +380,7 @@ if($customheaders){
 }
 
 
+#print Dumper %httpheaders;
 my @httpheaders = %httpheaders; #because we need an ARRAY ref in FURL
 
 my %sslopts = (
@@ -387,6 +391,8 @@ $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 
 
 my %furlargs = (
+	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
+	#'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
 	'get_address' => sub {
 			#custom cached DNS resolution - Only 1 DNS per scan
             my ($host, $port, $timeout) = @_;
