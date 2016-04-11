@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 # install dependencies (it can take a while):
 # > cpan install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
 
@@ -11,6 +10,8 @@
 
 use strict;
 use warnings;
+# nasty workaround to disable smartmatch experimental warning. Hopefully temporary
+no if $] >= 5.017011, warnings => 'experimental::smartmatch';
 use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);	# Stupid default behaviour.
 use File::Basename qw(dirname);
@@ -32,6 +33,7 @@ use Net::DNS::Lite qw(inet_aton);
 
 use Socket qw(pack_sockaddr_in inet_ntoa);
 use URI::Split qw(uri_split);
+use POSIX;
 
 #Constants
 use constant DEF_MAXNUMTHREADS	=> 2;
@@ -49,7 +51,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.8.6 
+      \/                 \/       \/           \/            \/    v0.8.7 
                                                   HTTP scanner by Henshin 
  
 EOF
@@ -221,7 +223,7 @@ my $resolvedip = inet_ntoa($addr);
 
 #die();
 #check recursive
-if($url !~ /\/{fuzz}$/ && defined($recursive)){
+if($url !~ /\/\{fuzz}$/ && defined($recursive)){
 	die "[-] You can't use recursive scans if your {fuzz} keyword is not at the end of your URL\n\n";
 }
 
@@ -247,7 +249,7 @@ if(defined($socks)){
 
 # Build list of extensions from a file.
 if (defined($extensionsfilename)) {
-	open(my $fh, "<", $extensionsfilename) or die "$extensionsfilename: open error: $!";
+	open(my $fh, "<", $extensionsfilename) or die "[-] Error opening $extensionsfilename: $!\n\n";
 	$extensions = do {
 		local($/);
 		<$fh>
@@ -267,6 +269,7 @@ open OUTPUT, '>>', $outputfilename or die $! if (defined($outputfilename));
 
 #Process start
 &LogPrint("[+] ---- Session Start ----\n");
+&LogPrint("[+] Start Time '" . strftime("%F %T", localtime) . "'\n");
 &LogPrint("[+] Targetting URL '$url'\n");
 &LogPrint("[+] Using Proxy '$proxy'\n") if ($proxy);
 &LogPrint("[+] Using SOCKS proxy '$socks'\n") if ($socks);
@@ -490,10 +493,11 @@ do{
 }while($recursive && scalar(@paths));
 
 &PrintSequence("\e[K", "[+] All threads finished!\n");
-close OUTPUT if (defined($outputfilename));
 my $t1 = Benchmark->new;
 my $td = timediff($t1,$t0);
 print "[+] Execution time: ",timestr($td),"\n\n";
+&LogPrint("[+] End Time '" . strftime("%F %T", localtime) . "'\n\n");
+close OUTPUT if (defined($outputfilename));
 
 exit 0;
 
