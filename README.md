@@ -12,7 +12,7 @@ This gets very easily done on Filebuster:
 # perl filebuster.pl -u http://yoursite.com/get{fuzz}.asp -w /path/to/wordlist.txt -p ^pag
 ```
 
-Initially Filebuster was just this, a fuzzer with regex support but then it evolved over time and according to my tests, it's fastest than any other fuzzer out there: dirb, DirBuster, wfuzz...
+Initially Filebuster was just this, a fuzzer with regex support but then it evolved over time and according to my tests, it's one of the fastest fuzzers out there!
 
 The name was a mockup taken from the previous two most well known fuzzers: dirb -> Dirbuster -> Filebuster. The name stuck and now I can't change it :)
 
