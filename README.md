@@ -1,4 +1,4 @@
-# filebuster
+# Filebuster
 An extremely fast and flexible web fuzzer
 
 ### Why another fuzzer?
@@ -20,12 +20,11 @@ Filebuster was built based on one of the fastest HTTP classes in the world (of P
 ### Features
 It packs a ton of features like:
  - The already mentioned Regex patterns
- - Multithreaded optimizations
  - Supports HTTP/HTTPS/SOCKS proxy
  - Allows for multiple wordlists using wildcards
  - Additional file extensions
  - Adjustable timeouts and retries
- - Adjustable delays / throtteling
+ - Adjustable delays / throttling
  - Hide results based on HTTP code, length or words in headers or body
  - Support for custom cookies 
  - Support for custom headers
@@ -46,6 +45,7 @@ Filebuster is a Perl script so no installation is necessary. However, the best w
 ```
 # ln -s /path/to/filebuster.pl /usr/local/bin/filebuster
 ```
+Then you will be able to use it system wide
 
 ### Syntax
 On the most basic form, Filebuster can be run using the following syntax:
@@ -69,7 +69,7 @@ Filebuster is a very nice tool but with your help, it can be even better. If you
 Also right now I have these 4 things on my mind to check out once I have the time:
  - use File::Map to load dictionaries since it should be more memory efficient
  - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
- - create a seperate file with the list of ignored directories when using recursive search
+ - create a separate file with the list of ignored directories when using recursive search
  - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly. Right now the lenght is fixed and might not work for small terminals
 
 ### Thanks
