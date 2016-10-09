@@ -1,7 +1,7 @@
 # filebuster
 An extremely fast and flexible web fuzzer
 
-### Why another fuzzer? and another 'buster'??
+### Why another fuzzer?
 
 My main motivation was to write a script that would allow me to fuzz a website based on a dictionary but that allowed me to filter words on that dictionary based on regex patterns. This necessity came from the frustration of trying to find the pages from the partial results returned by the Soroush's IIS shortname scanner tool (https://github.com/irsdl/iis-shortname-scanner/). 
 In case that you're not aware of, most IIS web servers version 7.5 or below are vulnerable to filenames partial name discovery by requesting those pages in the format 8.3, for example: abcdef~1.zip
@@ -12,20 +12,18 @@ This gets very easily done on Filebuster:
 # perl filebuster.pl -u http://yoursite.com/get{fuzz}.asp -w /path/to/wordlist.txt -p ^pag
 ```
 
-Initially Filebuster was just this, a fuzzer with regex support but then it evolved over time and according to my tests, it's one of the fastest fuzzers out there!
-
-The name was a mockup taken from the previous two most well known fuzzers: dirb -> Dirbuster -> Filebuster. The name stuck and now I can't change it :)
+Initially Filebuster was just this, a fuzzer with regex support but then I really invested some time on it to support various interesting features while keeping it blazing fast.
 
 ### Why is it so fast?
-Filebuster was built based on one of the fastest HTTP classes in the world (of PERL) - Furl::HTTP. 
+Filebuster was built based on one of the fastest HTTP classes in the world (of PERL) - Furl::HTTP. Also the thread modelling is a bit optimized to run as fast as possible.
 
 ### Features
-It also packs a ton of features like:
+It packs a ton of features like:
  - The already mentioned Regex patterns
  - Multithreaded optimizations
  - Supports HTTP/HTTPS/SOCKS proxy
  - Allows for multiple wordlists using wildcards
- - Aditional extensions
+ - Additional file extensions
  - Adjustable timeouts and retries
  - Adjustable delays / throtteling
  - Hide results based on HTTP code, length or words in headers or body
@@ -33,6 +31,7 @@ It also packs a ton of features like:
  - Support for custom headers
  - Supports multiple versions of the TLS protocol
  - Automatic TTY detection
+ - Recursive scans
  
 ### Requisites
 Perl version **5.10** is required
@@ -139,4 +138,4 @@ Also right now I have these 4 things on my mind to check out once I have the tim
  - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly. Right now the lenght is fixed and might not work for small terminals
 
 ### Thanks
-I would like to thank TC for his updates to the code. 
+I would like to thank TC for his updates to the code on the initial phase of the project 
