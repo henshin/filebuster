@@ -61,7 +61,8 @@ A more complex example:
 This would allow you to fuzz a website with 3 threads to find JSP pages, using a local proxy and hiding all responses with "Error" in the body.
 
 For the complete syntax help with examples, just run `filebuster.pl --help`.
-Here's the full help:
+
+If you need good wordlists, you should check out the great [SecLists](https://github.com/danielmiessler/SecLists/) repository.
 
 ### TODO
 Filebuster is a very nice tool but with your help, it can be even better. If you're into Perl and know a way of optimizing the performance of Filebuster, let me know. Right now it uses little memory but a lot of CPU power, so there's always room for improvement. 
