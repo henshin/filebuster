@@ -34,7 +34,7 @@ It packs a ton of features like:
  - Integrated wordlists
  
 ### Requisites
-Perl version **5.10** is required
+Perl version **5.10** or higher is required
 
 Filebuster resources a lot of features to third party libraries. However they can be easily installed with the following command:
 ```
