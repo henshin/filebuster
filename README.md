@@ -31,6 +31,7 @@ It packs a ton of features like:
  - Supports multiple versions of the TLS protocol
  - Automatic TTY detection
  - Recursive scans
+ - Integrated wordlists
  
 ### Requisites
 Perl version **5.10** is required
@@ -62,12 +63,17 @@ This would allow you to fuzz a website with 3 threads to find JSP pages, using a
 
 For the complete syntax help with examples, just run `filebuster.pl --help`.
 
-If you need good wordlists, you should check out the great [SecLists](https://github.com/danielmiessler/SecLists/) repository.
+### Wordlists
+I've created some wordlists based on different sources around the web for your convenience. You can find them on the `wordlists` directory.
+This means you can start using FileBuster right away:
+```
+# perl filebuster.pl -u http://yoursite.com/ -w wordlists/normal.txt
+```
+If you need more wordlists, you should check out the great [SecLists](https://github.com/danielmiessler/SecLists/) repository.
 
 ### TODO
 Filebuster is a very nice tool but with your help, it can be even better. If you're into Perl and know a way of optimizing the performance of Filebuster, let me know. Right now it uses little memory but a lot of CPU power, so there's always room for improvement. 
 Also right now I have these 4 things on my mind to check out once I have the time:
- - use File::Map to load dictionaries since it should be more memory efficient
  - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
  - create a separate file with the list of ignored directories when using recursive search
  - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly. Right now the lenght is fixed and might not work for small terminals
