@@ -3,7 +3,6 @@
 # > cpan install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
 
 #TODO: 
-#   - use File::Map to load files -> extreme memory optimization
 #   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
 #   - create a seperate file with the list of ignored directories when using recursive search
 #   - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly
@@ -51,7 +50,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.8.7 
+      \/                 \/       \/           \/            \/    v0.8.8 
                                                   HTTP scanner by Henshin 
  
 EOF
@@ -239,7 +238,6 @@ if(defined($socks)){
 	#disable socks
 	IO::Socket::Socks::Wrapper->import(0);
 	if (defined($proxy)){
-		print "Using PROXY!";
 		$proxy = "http://$proxy" if($proxy !~ /^https?:\/\//);
 		if($proxy !~ m/^https?:\/\/([\d\.]+):(\d+)$/){
 			die "[-] Invalid Proxy argument. Valid syntaxes are: IP:PORT or http://IP:PORT or https://IP:PORT\n\n";
@@ -341,6 +339,35 @@ $|--;
 
 if(!$nourlencoding){
 	for my $word (@allwords){
+
+#TODO:
+#Only encode the unsafe characters. Keep the reserved characters as is
+#The reserved characters are:
+#
+#    ampersand ("&")
+#    dollar ("$")
+#    plus sign ("+")
+#    comma (",")
+#    forward slash ("/")
+#    colon (":")
+#    semi-colon (";")
+#    equals ("=")
+#    question mark ("?")
+#    'At' symbol ("@")
+#    pound ("#").
+#
+#The characters generally considered unsafe are:
+#
+#    space (" ")
+#    less than and greater than ("<>")
+#    open and close brackets ("[]")
+#    open and close braces ("{}")
+#    pipe ("|")
+#    backslash ("\")
+#    caret ("^")
+#    percent ("%")
+
+	
 		if($word=~/[%\/]/){
 			print "[!] ";
 			&PrintColor('bright_yellow', "Warning: ");
@@ -464,10 +491,10 @@ do{
 		my $word = $allwords[$j];
 		$word =~ s/\r|\n//g;
 		next if ($word =~ /^\s*$/);
-		$word=uri_escape($word) if(!$nourlencoding);
+		#try to be intelligent about what to escape. This is a bit experimental
+		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@') if(!$nourlencoding); 
 		$sessionpayload = $url;
 		$sessionpayload =~ s/{fuzz}/$word/;
-#print "$sessionpayload\n";
 		my $arrayindex = $j % $maxnumthreads;
 		push @{$threadlists[$arrayindex]}, $sessionpayload;
 	}
@@ -505,26 +532,14 @@ exit 0;
 
 sub SubmitGet{
 	my($url,$use_proxy) = @_;
-	#my %furlargs = (
-	#	'inet_aton' => \&Net::DNS::Lite::inet_aton,
-	#	'timeout'   => 5,
-	#	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
-	#	'max_redirects' => 0,
-	#);
 	if($use_proxy && $proxy){
 		$furlargs{"proxy"} = $proxy;
 	}
-
-
 	my $furl = Furl::HTTP->new(%furlargs);
-	#print Dumper %furlargs;
-	#print "Port: $port\n";
 	my ($minor_version, $code, $msg, $headers, $body) = $furl->request(
 		'method' => 'GET',
 		'url' => $url,
 	);
-	#print $Net::DNS::Lite::CACHE->get("in a henshin.ovh");
-	#print "IP: " ; print Net::DNS::Lite::inet_aton("www.google.com", 15);
 	my %rethash = (
 		"httpcode" => $code, 
 		"headers" => $headers, 
@@ -544,6 +559,7 @@ sub SubmitGetList{
 	my $furl = Furl::HTTP->new(%furlargs);
 	my $reqcount = 0;
 
+	#TODO: make this more user configurable
 	my @recursiveignorelist = [
 		"img",
 		"images",
@@ -669,21 +685,12 @@ sub SubmitGetList{
 			next if ($skip);
 		}
 
-		#push @respqueue, [$ret{"httpcode"},$ret{"length"}];
-		#if(scalar(@respqueue)>=$respqueuesize){
-		#	shift @resqueue; #remove the first element to limit the array to $resqueuesize
-		#	my $lastcode,$lastlength;
-		#	foreach my $resp (@respqueue){
-		#		
-		#	}
-		#}
-		
-		
 		{
 			my $color = 'reset';
 			switch($ret{"httpcode"}){
 				case /2\d\d/ { $color = 'bright_green' }
 				case /3\d\d/ { $color = 'bright_yellow' }
+				case /401/   { $color = 'bright_cyan' }
 				case /4\d\d/ { $color = 'bright_red' }
 				case /5\d\d/ { $color = 'bright_magenta' }
 			}
@@ -731,7 +738,6 @@ sub LogPrint{
 sub ReadFile{
 	my ($file,$pattern) = @_;
 	my @content;
-	#my $warnbadchars = undef;
 	if(-z $file || !open(FILE,'<', $file)){
 		if(scalar @allwords == 0){
 			die("[-] Error: Can't open the file '$file'! ($!)\n\n");
@@ -748,9 +754,6 @@ sub ReadFile{
 		$line=~s/\r|\n//g;
 		next if (!$line);
 		next if ($line=~/^#/);
-		#if($line=~/[%\/]/){
-		#	$warnbadchars=1;
-		#}
 		foreach my $ext (@exts){
 			if($caseinsensitive){
 				$line = lc $line;
@@ -761,11 +764,6 @@ sub ReadFile{
 		}
 	}
 	close (FILE);
-	#if($warnbadchars && !$nourlencoding){
-	#	print "[!] ";
-	#	&PrintColor('bright_yellow', "Warning: ");
-	#	print "Special characters found on wordlist and the flag --nourlenc was not specified. Characters will be encoded for safe requests.\n"; 
-	#}
 	return @content;
 }
 
