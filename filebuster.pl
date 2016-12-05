@@ -50,7 +50,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.8.8 
+      \/                 \/       \/           \/            \/    v0.8.9 
                                                   HTTP scanner by Henshin 
  
 EOF
@@ -204,23 +204,30 @@ if(defined($hidecode)){
 
 #format the url properly
 $url = "http://$url" if($url !~ /^https?:\/\//);
+#print "URL VERIFICATION: $url\n";
 if($url !~ /{fuzz}/){ # append the {fuzz} if not specified
 	$url = "$url/" if ($url !~ /\/$/);
 	$url = $url."{fuzz}";
 }
 
-# DNS resolve
+# DNS resolve - here we can test if we can resolve the address. note that the ip resolved at this stage might not be the one used for scanning
+#print "Resolving DNS for $url\n";
 my ($scheme, $host, $urlpath, $query, $frag) = uri_split($url);
 
 #remove port from host if specified
-#$host =~ s/:\d+$//g;
+$host =~ s/:\d+$//g;
+#$a=$host;
+#$a =~ s/:\d+$//rg;
+#print "Testing $a ......$host \n";
 my $addr = inet_aton(( $host =~ s/:\d+$//rg ));
+# i need to change this because Furl will ask for the resolution of the proxy as well...
+
+
 #my $iphost  = gethostbyaddr($addr, AF_INET);
-#print "Resolves to: $iphost\n";
 die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
 my $resolvedip = inet_ntoa($addr);
 
-#die();
+
 #check recursive
 if($url !~ /\/\{fuzz}$/ && defined($recursive)){
 	die "[-] You can't use recursive scans if your {fuzz} keyword is not at the end of your URL\n\n";
@@ -428,7 +435,8 @@ my %furlargs = (
 	'get_address' => sub {
 			#custom cached DNS resolution - Only 1 DNS per scan
             my ($host, $port, $timeout) = @_;
-			#print "HOST: $host PORT: $port TIMEOUT: $timeout\n";
+			#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
+			$addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
 			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
         },
 	'timeout'   => 5,
@@ -439,17 +447,19 @@ my %furlargs = (
 );
 $furlargs{"proxy"} = $proxy if ($proxy);
 
-if($proxy){
-	print "[!] Proxy specified. Testing connection to proxy...\n";
-	&SubmitGet("$proxy");
-	#TODO: check proxy
-}
+# this doesn't make sense since we are testing the proxy with the proxy URL 
+#if($proxy){
+#	print "[!] Proxy specified. Testing connection to proxy...\n";
+#	&SubmitGet("$proxy");
+#	#TODO: check proxy
+#}
+
 
 print "[*] Testing connection to the website host '$host' ($resolvedip)...\n";
 
-my $sessionpayload = "$scheme://$host/7ddf32e17a6ac5ce04a8ecbf782ca509.ext";
+#my $sessionpayload = "$scheme://$host/7ddf32e17a6ac5ce04a8ecbf782ca509.ext";
 #instead of requesting a random file, why not just load the web root?
-$sessionpayload = "$scheme://$host/";
+my $sessionpayload = "$scheme://$host/";
 
 my %ret = &SubmitGet($sessionpayload);
 #my %ret = &SubmitGet($url);
@@ -533,11 +543,15 @@ exit 0;
 #################################### FUNCTIONS #########################################
 
 sub SubmitGet{
-	my($url,$use_proxy) = @_;
-	if($use_proxy && $proxy){
-		$furlargs{"proxy"} = $proxy;
-	}
+	my($url) = @_;
+	#print "PROXY is $proxy  URL is $url\n";
+	#if($use_proxy && $proxy){
+	#	print "proxy confirmation!\n";
+	#	$furlargs{"proxy"} = $proxy;
+	#}
 	my $furl = Furl::HTTP->new(%furlargs);
+	#print Dumper $furl;
+	#print "Just checking one last time the URL: $url\n";
 	my ($minor_version, $code, $msg, $headers, $body) = $furl->request(
 		'method' => 'GET',
 		'url' => $url,
