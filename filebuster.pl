@@ -374,6 +374,8 @@ if(!$nourlencoding){
 #    caret ("^")
 #    percent ("%")
 
+# The intelligent escaping system should encode the '%' character only if it's not followed by 2 hex digits.
+# e.g. it should escape this: payload%thing  but not this:  payload%2fthing
 	
 		if($word=~/[%\/]/){
 			print "[!] ";
