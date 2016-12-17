@@ -19,7 +19,7 @@ Filebuster was built based on one of the fastest HTTP classes in the world (of P
 
 ### Features
 It packs a ton of features like:
- - The already mentioned Regex patterns
+ - Regex patterns on wordlists
  - Supports HTTP/HTTPS/SOCKS proxy
  - Allows for multiple wordlists using wildcards
  - Additional file extensions
@@ -51,13 +51,13 @@ Then you will be able to use it system wide
 ### Syntax
 On the most basic form, Filebuster can be run using the following syntax:
 ```
-# perl filebuster.pl -u http://yoursite.com/ -w /path/to/wordlist.txt
+# filebuster -u http://yoursite.com/ -w /path/to/wordlist.txt
 ```
 If you want to fuzz the final part of the URL, then you don't need to using the tag **{fuzz}**  to indicate where to inject. 
 
 A more complex example: 
 ```
-# perl filebuster.pl -u http://yoursite.com/{fuzz}.jsp -w /path/to/wordlist.txt -t 3 -x http://127.0.0.1:8080 --hs "Error"
+# filebuster -u http://yoursite.com/{fuzz}.jsp -w /path/to/wordlist.txt -t 3 -x http://127.0.0.1:8080 --hs "Error"
 ```
 This would allow you to fuzz a website with 3 threads to find JSP pages, using a local proxy and hiding all responses with "Error" in the body.
 
@@ -67,7 +67,7 @@ For the complete syntax help with examples, just run `filebuster.pl --help`.
 I've created some wordlists based on different sources around the web for your convenience. You can find them on the `wordlists` directory.
 This means you can start using FileBuster right away:
 ```
-# perl filebuster.pl -u http://yoursite.com/ -w wordlists/normal.txt
+# filebuster -u http://yoursite.com/ -w wordlists/normal.txt
 ```
 If you need more wordlists, you should check out the great [SecLists](https://github.com/danielmiessler/SecLists/) repository.
 
