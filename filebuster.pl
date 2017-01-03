@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # install dependencies (it can take a while):
-# > cpan install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
+# > cpan install YAML Furl Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
 
 #TODO: 
 #   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
@@ -18,7 +18,6 @@ use URI::Escape;
 use HTML::Entities;
 use List::MoreUtils qw(uniq); #requires cpan install
 use Term::ANSIColor;
-use Switch;
 use threads;
 use threads::shared;
 use Time::HiRes qw(usleep);
@@ -703,13 +702,13 @@ sub SubmitGetList{
 
 		{
 			my $color = 'reset';
-			switch($ret{"httpcode"}){
-				case /2\d\d/ { $color = 'bright_green' }
-				case /3\d\d/ { $color = 'bright_yellow' }
-				case /401/   { $color = 'bright_cyan' }
-				case /4\d\d/ { $color = 'bright_red' }
-				case /5\d\d/ { $color = 'bright_magenta' }
-			}
+			
+			$color = 'bright_green'		if($ret{"httpcode"} =~ /2\d\d/);
+			$color = 'bright_yellow' 	if($ret{"httpcode"} =~ /3\d\d/);			
+			$color = 'bright_red' 		if($ret{"httpcode"} =~ /4\d\d/);
+			$color = 'bright_cyan' 		if($ret{"httpcode"} =~ /401/);
+			$color = 'bright_magenta' 	if($ret{"httpcode"} =~ /5\d\d/);
+						
 			#preventing threads from output prints at the same time
 			lock($semaphore);
 			&PrintSequence("\e[K");
