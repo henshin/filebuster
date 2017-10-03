@@ -28,9 +28,9 @@ use IO::Socket::Socks::Wrapper{}; # for SOCKS
 #Japanese power - 75% increased performance over LWP::UserAgent!
 use Furl;
 use Cache::LRU;
-use Net::DNS::Lite qw(inet_aton);
+#use Net::DNS::Lite qw(inet_aton);
 
-use Socket qw(pack_sockaddr_in inet_ntoa);
+use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
 use URI::Split qw(uri_split);
 use POSIX;
 
@@ -83,6 +83,7 @@ my $quiet = 0;
 my $stdoutisatty = 1;
 my $recursive;
 my $extensionsfilename = undef;
+
 
 GetOptions (
 	'u=s' => \$url, 
@@ -186,10 +187,10 @@ $quiet = 1 unless $stdoutisatty;
 my $semaphore :shared;
 
 #DNS Cache
-$Net::DNS::Lite::CACHE = Cache::LRU->new(
-	size => 256,
-);
-$Net::DNS::Lite::CACHE_TTL = 100; # this doesn't seem to affect DNS cache
+#$Net::DNS::Lite::CACHE = Cache::LRU->new(
+#	size => 256,
+#);
+#$Net::DNS::Lite::CACHE_TTL = 100; # this doesn't seem to affect DNS cache
 
 #Validations
 if(!$url || scalar @wordlistfiles == 0){
@@ -216,10 +217,7 @@ my ($scheme, $host, $urlpath, $query, $frag) = uri_split($url);
 
 #remove port from host if specified
 $host =~ s/:\d+$//g;
-#$a=$host;
-#$a =~ s/:\d+$//rg;
-#print "Testing $a ......$host \n";
-my $addr = inet_aton(( $host =~ s/:\d+$//rg ));
+my $addr = inet_aton($host);
 # i need to change this because Furl will ask for the resolution of the proxy as well...
 
 
@@ -341,6 +339,9 @@ foreach my $wordfile (@wordlistfiles){
 
 
 @allwords = uniq @allwords;
+#just load the url without any word as well
+unshift @allwords, '';
+
 &PrintSequence("\e[K", "[+] All words indexed. Total words scrapped: " . scalar @allwords. "\n\n");
 $|--;
 
@@ -502,7 +503,7 @@ do{
 	for(my $j=0; $j<scalar(@allwords); $j++){
 		my $word = $allwords[$j];
 		$word =~ s/\r|\n//g;
-		next if ($word =~ /^\s*$/);
+		#next if ($word =~ /^\s*$/);
 		#try to be intelligent about what to escape. This is a bit experimental
 		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@') if(!$nourlencoding); 
 		$sessionpayload = $url;
@@ -551,7 +552,7 @@ sub SubmitGet{
 	#}
 	my $furl = Furl::HTTP->new(%furlargs);
 	#print Dumper $furl;
-	#print "Just checking one last time the URL: $url\n";
+	print "Just checking one last time the URL: $url\n";
 	my ($minor_version, $code, $msg, $headers, $body) = $furl->request(
 		'method' => 'GET',
 		'url' => $url,
@@ -576,7 +577,7 @@ sub SubmitGetList{
 	my $reqcount = 0;
 
 	#TODO: make this more user configurable
-	my @recursiveignorelist = [
+	my @recursiveignorelist = (
 		"img",
 		"images",
 		"imgs",
@@ -596,7 +597,12 @@ sub SubmitGetList{
 		"themes",
 		"fonts",
 		"skins",
-	];
+	);
+	my @dirlistpatterns = (
+		'<title>Index of \/.*?<\/title>', # Apache & nginx
+		'<a href="\/.*?">\[To Parent Directory\]<\/a>', # IIS
+		'<h\d>Directory listing for \/.*?<\/h\d>', # Python SimpleHTTPServer
+	);
 
 	#this will be used to analyze previous requests and make actions according to certain responses
 	my @respqueue;
@@ -733,6 +739,14 @@ sub SubmitGetList{
 			print "\n";
 			$str = "[".$ret{"httpcode"}."]   $str\n";
 			&Log($str);
+			
+			#Check for directory listing
+			
+			if($ret{"httpcode"} == 200){
+				foreach my $pattern (@dirlistpatterns){
+					print "Found possible directory listing...\n" if($ret{"content"} =~ /$pattern/i);
+				}
+			}
 		}
 
 		
