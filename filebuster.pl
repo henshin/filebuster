@@ -4,6 +4,7 @@
 # -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
+#   - DNS over SOCKS is not currently working 
 #   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
 #   - create a seperate file with the list of ignored directories when using recursive search
 #   - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly
