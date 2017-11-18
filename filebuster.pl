@@ -1,6 +1,7 @@
 #!/usr/bin/perl
-# install dependencies (it can take a while):
-# > cpan install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
+# install dependencies:
+# > cpan -T install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
+# -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
 #   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
