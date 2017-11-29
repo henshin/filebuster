@@ -84,7 +84,7 @@ my $quiet = 0;
 my $stdoutisatty = 1;
 my $recursive;
 my $extensionsfilename = undef;
-my $method;
+my $method = "GET";
 
 GetOptions (
 	'u=s' => \$url, 
@@ -115,6 +115,7 @@ GetOptions (
 	'shortnamelist=s' => \$shortnamelist,
 	'q' => \$quiet,
 	'E=s' => \$extensionsfilename,
+	'm=s' => \$method,
 	) or exit(-1);
 
 if($help){
@@ -142,7 +143,8 @@ if($help){
         -r:                     Use recursive scans. This is only possible if your {fuzz} keywork is at the end 
                                 of your URL. Recursive scans respect the -p (pattern) filter if specified
         -m: <HTTP method>       Specifies a different HTTP method to use. Default is GET. Note that if you use 
-                                HEAD, it will affect the performance
+                                HEAD, it will affect the performance. Also note that if you change to POST, you
+                                should also add the Content-Type header using the --headers argument
         -x <ip:port>            Use specified proxy. Example: 127.0.0.1:8080 or http://192.168.0.1:8123
         -s <ip:port>            Use specified SOCKS proxy. Example: 127.0.0.1:8080
         -o <logfile>:           Specifies the log file to store the output. Default is /tmp/filebuster.log
@@ -276,7 +278,7 @@ foreach my $ai (@res) {
 
 use Net::DNS;
 my $resolver = new Net::DNS::Resolver();
-my $reply = $resolver->search( 'aaa.u.nix.ovh' );
+my $reply = $resolver->search( 'some.website' );
 
 my $addr = inet_aton($host);
 # i need to change this because Furl will ask for the resolution of the proxy as well...
@@ -772,13 +774,12 @@ sub SubmitGetList{
 
 		{
 			my $color = 'reset';
-			switch($ret{"httpcode"}){
-				case /2\d\d/ { $color = 'bright_green' }
-				case /3\d\d/ { $color = 'bright_yellow' }
-				case /401/   { $color = 'bright_cyan' }
-				case /4\d\d/ { $color = 'bright_red' }
-				case /5\d\d/ { $color = 'bright_magenta' }
-			}
+			$color = 'bright_green'		if($ret{"httpcode"} =~ /2\d\d/);
+			$color = 'bright_yellow' 	if($ret{"httpcode"} =~ /3\d\d/);
+			$color = 'bright_red' 		if($ret{"httpcode"} =~ /4\d\d/);
+			$color = 'bright_cyan' 		if($ret{"httpcode"} =~ /401/);
+			$color = 'bright_magenta' 	if($ret{"httpcode"} =~ /5\d\d/);
+
 			#preventing threads from output prints at the same time
 			lock($semaphore);
 			&PrintSequence("\e[K");
