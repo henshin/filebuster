@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # install dependencies:
-# > cpan -T install YAML Furl Switch Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
+# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL
 # -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
@@ -20,20 +20,19 @@ use URI::Escape;
 use HTML::Entities;
 use List::MoreUtils qw(uniq); #requires cpan install
 use Term::ANSIColor;
-use Switch;
 use threads;
 use threads::shared;
 use Time::HiRes qw(usleep);
 use Benchmark;
+#use IO::Socket;
 use IO::Socket::SSL; # for SSL
 use IO::Socket::Socks::Wrapper{}; # for SOCKS
 #Japanese power - 75% increased performance over LWP::UserAgent!
 use Furl;
-use Cache::LRU;
 #use Net::DNS::Lite qw(inet_aton);
 
 use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
-use URI::Split qw(uri_split);
+use URI::URL;
 use POSIX;
 
 #Constants
@@ -52,7 +51,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.8.9 
+      \/                 \/       \/           \/            \/    v0.9.0 
                                                   HTTP scanner by Henshin 
  
 EOF
@@ -85,7 +84,7 @@ my $quiet = 0;
 my $stdoutisatty = 1;
 my $recursive;
 my $extensionsfilename = undef;
-
+my $method;
 
 GetOptions (
 	'u=s' => \$url, 
@@ -142,6 +141,8 @@ if($help){
         -E:                     New-line separated file of extensions to be appended.
         -r:                     Use recursive scans. This is only possible if your {fuzz} keywork is at the end 
                                 of your URL. Recursive scans respect the -p (pattern) filter if specified
+        -m: <HTTP method>       Specifies a different HTTP method to use. Default is GET. Note that if you use 
+                                HEAD, it will affect the performance
         -x <ip:port>            Use specified proxy. Example: 127.0.0.1:8080 or http://192.168.0.1:8123
         -s <ip:port>            Use specified SOCKS proxy. Example: 127.0.0.1:8080
         -o <logfile>:           Specifies the log file to store the output. Default is /tmp/filebuster.log
@@ -205,27 +206,33 @@ if(defined($hidecode)){
 	}
 }
 
+
 #format the url properly
 $url = "http://$url" if($url !~ /^https?:\/\//);
-#print "URL VERIFICATION: $url\n";
+my $urlobj = new URI::URL($url);
+my ($scheme, $user, $password, $host, $port, $epath, $eparams, $equery, $frag) = $urlobj->crack;
+
+#
+#
+#print "scheme: ".$scheme."\n";
+#print "user: ".$user."\n";
+#print "pass: ".$password."\n";
+#print "host: ".$host."\n";
+#print "port: ".$port."\n";
+#print "path: ".$epath."\n";
+#print "params: ".$eparams."\n";
+#print "query: ".$equery."\n";
+#print "frag: ".$frag."\n";
+#
+#
+#die();
+
+
 if($url !~ /{fuzz}/){ # append the {fuzz} if not specified
 	$url = "$url/" if ($url !~ /\/$/);
 	$url = $url."{fuzz}";
 }
 
-# DNS resolve - here we can test if we can resolve the address. note that the ip resolved at this stage might not be the one used for scanning
-#print "Resolving DNS for $url\n";
-my ($scheme, $host, $urlpath, $query, $frag) = uri_split($url);
-
-#remove port from host if specified
-$host =~ s/:\d+$//g;
-my $addr = inet_aton($host);
-# i need to change this because Furl will ask for the resolution of the proxy as well...
-
-
-#my $iphost  = gethostbyaddr($addr, AF_INET);
-die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
-my $resolvedip = inet_ntoa($addr);
 
 
 #check recursive
@@ -251,6 +258,38 @@ if(defined($socks)){
 		}
 	}
 }
+
+
+#use Socket qw(SOCK_STREAM getaddrinfo);
+
+my $hostname = 'www.perlmonks.org';
+
+my ($err, @res) = getaddrinfo($hostname, "", 
+    {socktype => SOCK_STREAM});
+die "Cannot getaddrinfo - $err" if $err;
+foreach my $ai (@res) {
+    my ($err, $ipaddr) = getnameinfo($ai->{'addr'},
+        'NI_NUMERICHOST', 'NIx_NOSERV');
+    die "Cannot getnameinfo - $err" if $err;
+    print "$ipaddr";
+}
+
+use Net::DNS;
+my $resolver = new Net::DNS::Resolver();
+my $reply = $resolver->search( 'aaa.u.nix.ovh' );
+
+my $addr = inet_aton($host);
+# i need to change this because Furl will ask for the resolution of the proxy as well...
+
+#print "ADDR:$addr\n";
+
+#my $iphost  = gethostbyaddr($addr, AF_INET);
+die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
+my $resolvedip = inet_ntoa($addr);
+
+print "IP:$resolvedip\n";
+
+
 
 # Build list of extensions from a file.
 if (defined($extensionsfilename)) {
@@ -448,7 +487,25 @@ my %furlargs = (
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
 );
+
+
+
+#---------------testing-------------------
+
+%furlargs = (
+	
+	'timeout'   => 5,
+	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
+	'max_redirects' => 0,
+	ssl_opts => \%sslopts,
+	'headers' => \@httpheaders,
+);
+
+#---------------testing-------------------
+
 $furlargs{"proxy"} = $proxy if ($proxy);
+
+
 
 # this doesn't make sense since we are testing the proxy with the proxy URL 
 #if($proxy){
@@ -467,7 +524,11 @@ my $sessionpayload = "$scheme://$host/";
 my %ret = &SubmitGet($sessionpayload);
 #my %ret = &SubmitGet($url);
 
+
 print "[*] Web site returned ". $ret{"httpcode"}."\n";
+
+die("here");
+
 if($ret{"httpcode"} == 500){
 	if(!$force){
 		print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
