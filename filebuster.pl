@@ -26,7 +26,9 @@ use Time::HiRes qw(usleep);
 use Benchmark;
 use Net::DNS::Lite qw(inet_aton);
 use Furl;
+use Net::DNS;
 #use IO::Socket;
+use Socket;
 use IO::Socket::SSL; # for SSL
 use IO::Socket::Socks::Wrapper{}; # for SOCKS
 #Japanese power - 75% increased performance over LWP::UserAgent!
@@ -278,8 +280,10 @@ if(defined($socks)){
 #use Net::DNS;
 #my $resolver = new Net::DNS::Resolver();
 #my $reply = $resolver->search( 'some.website' );
-#
-my $addr = inet_aton($host);
+
+#this only works if SOCKS is not being used
+
+my $addr = inet_ntoa(inet_aton($host))  or die "Can't resolve $host: $!\n";
 die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
 # i need to change this because Furl will ask for the resolution of the proxy as well...
 
