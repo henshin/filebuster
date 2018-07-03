@@ -14,24 +14,25 @@ use warnings;
 # nasty workaround to disable smartmatch experimental warning. Hopefully temporary
 no if $] >= 5.017011, warnings => 'experimental::smartmatch';
 use Data::Dumper;
-use Getopt::Long qw(:config no_ignore_case);	# Stupid default behaviour.
+use Getopt::Long qw(:config no_ignore_case);
 use File::Basename qw(dirname);
 use URI::Escape;
 use HTML::Entities;
-use List::MoreUtils qw(uniq); #requires cpan install
+use List::MoreUtils qw(uniq); 
 use Term::ANSIColor;
 use threads;
 use threads::shared;
 use Time::HiRes qw(usleep);
 use Benchmark;
+use Net::DNS::Lite qw(inet_aton);
+use Furl;
 #use IO::Socket;
 use IO::Socket::SSL; # for SSL
 use IO::Socket::Socks::Wrapper{}; # for SOCKS
 #Japanese power - 75% increased performance over LWP::UserAgent!
-use Furl;
-#use Net::DNS::Lite qw(inet_aton);
 
-use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
+
+#use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
 use URI::URL;
 use POSIX;
 
@@ -41,6 +42,7 @@ use constant DEF_TIMEOUT		=> 5;
 use constant DEF_NUMRETRIES		=> 2;
 use constant DEF_PATTERN		=> '.';
 use constant DEF_HIDECODE		=> "404";
+use constant DEF_HTTPMETHOD		=> "GET";
 
 my $program;
 ($program = $0) =~ s#.*/##;
@@ -84,7 +86,7 @@ my $quiet = 0;
 my $stdoutisatty = 1;
 my $recursive;
 my $extensionsfilename = undef;
-my $method = "GET";
+my $method = DEF_HTTPMETHOD;
 
 GetOptions (
 	'u=s' => \$url, 
@@ -191,11 +193,12 @@ $quiet = 1 unless $stdoutisatty;
 #for queue printing
 my $semaphore :shared;
 
+use Cache::LRU;
 #DNS Cache
-#$Net::DNS::Lite::CACHE = Cache::LRU->new(
-#	size => 256,
-#);
-#$Net::DNS::Lite::CACHE_TTL = 100; # this doesn't seem to affect DNS cache
+$Net::DNS::Lite::CACHE = Cache::LRU->new(
+	size => 3,
+);
+$Net::DNS::Lite::CACHE_TTL = 100; # this doesn't seem to affect DNS cache
 
 #Validations
 if(!$url || scalar @wordlistfiles == 0){
@@ -264,32 +267,32 @@ if(defined($socks)){
 
 #use Socket qw(SOCK_STREAM getaddrinfo);
 
-my $hostname = 'www.perlmonks.org';
-
-my ($err, @res) = getaddrinfo($hostname, "", 
-    {socktype => SOCK_STREAM});
-die "Cannot getaddrinfo - $err" if $err;
-foreach my $ai (@res) {
-    my ($err, $ipaddr) = getnameinfo($ai->{'addr'},
-        'NI_NUMERICHOST', 'NIx_NOSERV');
-    die "Cannot getnameinfo - $err" if $err;
-    print "$ipaddr";
-}
-
-use Net::DNS;
-my $resolver = new Net::DNS::Resolver();
-my $reply = $resolver->search( 'some.website' );
-
-my $addr = inet_aton($host);
+#my $hostname = 'www.perlmonks.org';
+#
+#my ($err, @res) = getaddrinfo($hostname, "", 
+#    {socktype => SOCK_STREAM});
+#die "Cannot getaddrinfo - $err" if $err;
+#foreach my $ai (@res) {
+#    my ($err, $ipaddr) = getnameinfo($ai->{'addr'},
+#        'NI_NUMERICHOST', 'NIx_NOSERV');
+#    die "Cannot getnameinfo - $err" if $err;
+#    print "$ipaddr";
+#}
+#
+#use Net::DNS;
+#my $resolver = new Net::DNS::Resolver();
+#my $reply = $resolver->search( 'some.website' );
+#
+#my $addr = inet_aton($host);
 # i need to change this because Furl will ask for the resolution of the proxy as well...
 
 #print "ADDR:$addr\n";
 
 #my $iphost  = gethostbyaddr($addr, AF_INET);
-die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
-my $resolvedip = inet_ntoa($addr);
+#die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
+#my $resolvedip = inet_ntoa($addr);
 
-print "IP:$resolvedip\n";
+#print "IP:$resolvedip\n";
 
 
 
@@ -474,16 +477,18 @@ $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 
 
 my %furlargs = (
+	#inet_aton => \&Net::DNS::Lite::inet_aton,
 	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
 	#'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
-	'get_address' => sub {
-			#custom cached DNS resolution - Only 1 DNS per scan
-            my ($host, $port, $timeout) = @_;
-			#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
-			$addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
-			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
-        },
-	'timeout'   => 5,
+	# this worked well but was a problem when using SOCKS
+	#'get_address' => sub {
+	#		#custom cached DNS resolution - Only 1 DNS per scan
+    #        my ($host, $port, $timeout) = @_;
+	#		#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
+	#		$addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+	#		pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
+    #    },
+	'timeout'   => 3,
 	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
@@ -493,15 +498,15 @@ my %furlargs = (
 
 
 #---------------testing-------------------
-
-%furlargs = (
-	
-	'timeout'   => 5,
-	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
-	'max_redirects' => 0,
-	ssl_opts => \%sslopts,
-	'headers' => \@httpheaders,
-);
+#
+#%furlargs = (
+#	
+#	'timeout'   => 5,
+#	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
+#	'max_redirects' => 0,
+#	ssl_opts => \%sslopts,
+#	'headers' => \@httpheaders,
+#);
 
 #---------------testing-------------------
 
@@ -516,8 +521,8 @@ $furlargs{"proxy"} = $proxy if ($proxy);
 #	#TODO: check proxy
 #}
 
-
-print "[*] Testing connection to the website host '$host' ($resolvedip)...\n";
+#removed the IP address because it wasn't possible to retrieve it through socks
+print "[*] Testing connection to the website host '$host' ...\n";
 
 #my $sessionpayload = "$scheme://$host/7ddf32e17a6ac5ce04a8ecbf782ca509.ext";
 #instead of requesting a random file, why not just load the web root?
@@ -526,10 +531,6 @@ my $sessionpayload = "$scheme://$host/";
 my %ret = &SubmitGet($sessionpayload);
 #my %ret = &SubmitGet($url);
 
-
-print "[*] Web site returned ". $ret{"httpcode"}."\n";
-
-die("here");
 
 if($ret{"httpcode"} == 500){
 	if(!$force){
@@ -617,7 +618,6 @@ sub SubmitGet{
 	#}
 	my $furl = Furl::HTTP->new(%furlargs);
 	#print Dumper $furl;
-	print "Just checking one last time the URL: $url\n";
 	my ($minor_version, $code, $msg, $headers, $body) = $furl->request(
 		'method' => 'GET',
 		'url' => $url,
