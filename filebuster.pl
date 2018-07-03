@@ -37,7 +37,7 @@ use URI::URL;
 use POSIX;
 
 #Constants
-use constant DEF_MAXNUMTHREADS	=> 2;
+use constant DEF_MAXNUMTHREADS	=> 3;
 use constant DEF_TIMEOUT		=> 5;
 use constant DEF_NUMRETRIES		=> 2;
 use constant DEF_PATTERN		=> '.';
@@ -211,14 +211,13 @@ if(defined($hidecode)){
 	}
 }
 
-
 #format the url properly
 $url = "http://$url" if($url !~ /^https?:\/\//);
 my $urlobj = new URI::URL($url);
 my ($scheme, $user, $password, $host, $port, $epath, $eparams, $equery, $frag) = $urlobj->crack;
+my $netloc = $urlobj->netloc;
 
-#
-#
+#TESTING
 #print "scheme: ".$scheme."\n";
 #print "user: ".$user."\n";
 #print "pass: ".$password."\n";
@@ -228,17 +227,14 @@ my ($scheme, $user, $password, $host, $port, $epath, $eparams, $equery, $frag) =
 #print "params: ".$eparams."\n";
 #print "query: ".$equery."\n";
 #print "frag: ".$frag."\n";
-#
-#
-#die();
+#print "netloc: ".$urlobj->netloc."\n";
+#print "abs: ".$urlobj->abs."\n";
 
 
 if($url !~ /{fuzz}/){ # append the {fuzz} if not specified
 	$url = "$url/" if ($url !~ /\/$/);
 	$url = $url."{fuzz}";
 }
-
-
 
 #check recursive
 if($url !~ /\/\{fuzz}$/ && defined($recursive)){
@@ -283,16 +279,10 @@ if(defined($socks)){
 #my $resolver = new Net::DNS::Resolver();
 #my $reply = $resolver->search( 'some.website' );
 #
-#my $addr = inet_aton($host);
+my $addr = inet_aton($host);
+die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
 # i need to change this because Furl will ask for the resolution of the proxy as well...
 
-#print "ADDR:$addr\n";
-
-#my $iphost  = gethostbyaddr($addr, AF_INET);
-#die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
-#my $resolvedip = inet_ntoa($addr);
-
-#print "IP:$resolvedip\n";
 
 
 
@@ -436,16 +426,6 @@ if(scalar @allwords == 0){
 	die "[-] No words found with the specified regex filter.\n\n";
 }
 
-#at this point we are sure to have a ip host to connect to 
-#my $sessionpayload = $url;
-#$sessionpayload =~ s/{fuzz}/\//;
-#my $host;
-#if($sessionpayload =~ m#(https?://)(.*?)/#){
-#	$host = $2;
-#}else{
-#	die("[-] Couldn't extract the hostname from your URL. Are you sure you're inserting something like http://website.com/?\n\n");
-#}
-
 my %httpheaders;
 #this would save some bandwidth but it affects speed.
 #$httpheaders{'Accept-Encoding'}='gzip';
@@ -465,8 +445,6 @@ if($customheaders){
 	}
 }
 
-
-#print Dumper %httpheaders;
 my @httpheaders = %httpheaders; #because we need an ARRAY ref in FURL
 
 my %sslopts = (
@@ -474,7 +452,6 @@ my %sslopts = (
 );
 
 $sslopts{"SSL_version"} = $sslversion if ($sslversion);
-
 
 my %furlargs = (
 	#inet_aton => \&Net::DNS::Lite::inet_aton,
@@ -494,25 +471,7 @@ my %furlargs = (
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
 );
-
-
-
-#---------------testing-------------------
-#
-#%furlargs = (
-#	
-#	'timeout'   => 5,
-#	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
-#	'max_redirects' => 0,
-#	ssl_opts => \%sslopts,
-#	'headers' => \@httpheaders,
-#);
-
-#---------------testing-------------------
-
 $furlargs{"proxy"} = $proxy if ($proxy);
-
-
 
 # this doesn't make sense since we are testing the proxy with the proxy URL 
 #if($proxy){
@@ -523,15 +482,8 @@ $furlargs{"proxy"} = $proxy if ($proxy);
 
 #removed the IP address because it wasn't possible to retrieve it through socks
 print "[*] Testing connection to the website host '$host' ...\n";
-
-#my $sessionpayload = "$scheme://$host/7ddf32e17a6ac5ce04a8ecbf782ca509.ext";
-#instead of requesting a random file, why not just load the web root?
-my $sessionpayload = "$scheme://$host/";
-
+my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
-#my %ret = &SubmitGet($url);
-
-
 if($ret{"httpcode"} == 500){
 	if(!$force){
 		print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
@@ -550,7 +502,7 @@ if($ret{"httpcode"} == 500){
 	}
 
 }else{
-	print "[+] Connected successfuly!\n\n";
+	print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
 }
 print "[CODE] [LENGTH] [URL]\n";
 
