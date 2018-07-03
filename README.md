@@ -1,6 +1,8 @@
 # Filebuster
 An extremely fast and flexible web fuzzer
 
+#### Note: Grab the latest version on the "dev" branch with ```git clone -b dev https://github.com/henshin/filebuster.git```
+
 ### Why another fuzzer?
 
 My main motivation was to write a script that would allow me to fuzz a website based on a dictionary but that allowed me to filter words on that dictionary based on regex patterns. This necessity came from the frustration of trying to find the pages from the partial results returned by the Soroush's IIS shortname scanner tool (https://github.com/irsdl/iis-shortname-scanner/). 
