@@ -13,9 +13,10 @@ use strict;
 use warnings;
 # nasty workaround to disable smartmatch experimental warning. Hopefully temporary
 no if $] >= 5.017011, warnings => 'experimental::smartmatch';
+use IO::Socket::Socks::Wrapper{}; # for SOCKS - should be invoked before other uses
 use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);
-use File::Basename qw(dirname);
+use File::Basename qw(dirname fileparse);
 use URI::Escape;
 use HTML::Entities;
 use List::MoreUtils qw(uniq); 
@@ -30,10 +31,7 @@ use Net::DNS;
 #use IO::Socket;
 use Socket;
 use IO::Socket::SSL; # for SSL
-use IO::Socket::Socks::Wrapper{}; # for SOCKS
 #Japanese power - 75% increased performance over LWP::UserAgent!
-
-
 #use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
 use URI::URL;
 use POSIX;
@@ -46,8 +44,16 @@ use constant DEF_PATTERN		=> '.';
 use constant DEF_HIDECODE		=> "404";
 use constant DEF_HTTPMETHOD		=> "GET";
 
+
+
 my $program;
 ($program = $0) =~ s#.*/##;
+my $fullpath = (defined(readlink($0))) ? readlink($0) : $0;
+my ($filename, $dir, $suffix) = fileparse($fullpath);
+#$dir will contain the directory of the filebuster script. We can use this to deduct the wordlist directory.
+#print "Filename $filename\tdirs: $dir\t wordlist dir: $dir/wordlists/normal.txt \n";
+
+my $defaultwordlist = "$dir/wordlists/normal.txt";
 
 print <<'EOF';
  ___________.__.__        __________                __                
@@ -56,7 +62,7 @@ print <<'EOF';
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
       \/                 \/       \/           \/            \/    v0.9.0 
-                                                  HTTP scanner by Henshin 
+                                                   HTTP fuzzer by Henshin 
  
 EOF
 
@@ -150,7 +156,8 @@ if($help){
                                 HEAD, it will affect the performance. Also note that if you change to POST, you
                                 should also add the Content-Type header using the --headers argument
         -x <ip:port>            Use specified proxy. Example: 127.0.0.1:8080 or http://192.168.0.1:8123
-        -s <ip:port>            Use specified SOCKS proxy. Example: 127.0.0.1:8080
+        -s <ip:port>            Use specified SOCKS proxy. Example: 127.0.0.1:8080. Please note that the DNS 
+                                requests are not currently sent via the SOCKS proxy (library limitation) 
         -o <logfile>:           Specifies the log file to store the output. Default is /tmp/filebuster.log
         -i:                     Specifies case insensitive pattern searches
         --hc <code>:            Hides responses with the specified HTTP code. If not specified, Filebuster will
@@ -192,7 +199,7 @@ $stdoutisatty = 0 unless (-t STDOUT);
 # Assume quiet and don't print the URLs being scanned when stdout is not a TTY.
 $quiet = 1 unless $stdoutisatty;
 
-#for queue printing
+#for queued printing
 my $semaphore :shared;
 
 use Cache::LRU;
@@ -200,11 +207,20 @@ use Cache::LRU;
 $Net::DNS::Lite::CACHE = Cache::LRU->new(
 	size => 3,
 );
-$Net::DNS::Lite::CACHE_TTL = 100; # this doesn't seem to affect DNS cache
 
 #Validations
-if(!$url || scalar @wordlistfiles == 0){
+if(!$url){
 	die "[-] Arguments missing. Use $program --help for instructions\n\n";
+}
+
+if( scalar @wordlistfiles == 0){
+	# last try to load the default wordlist
+	if(-e $defaultwordlist){
+		print "[!] No wordlists were chosen. Using the default one: $defaultwordlist\n";
+		push @wordlistfiles, $defaultwordlist;
+	}else{
+		die "[-] No wordlist was specific and couldn't find the default Filebuster's wordlists. Please specify wordlist manually using -w. \n\n";
+	}
 }
 
 if(defined($hidecode)){
@@ -219,20 +235,6 @@ my $urlobj = new URI::URL($url);
 my ($scheme, $user, $password, $host, $port, $epath, $eparams, $equery, $frag) = $urlobj->crack;
 my $netloc = $urlobj->netloc;
 
-#TESTING
-#print "scheme: ".$scheme."\n";
-#print "user: ".$user."\n";
-#print "pass: ".$password."\n";
-#print "host: ".$host."\n";
-#print "port: ".$port."\n";
-#print "path: ".$epath."\n";
-#print "params: ".$eparams."\n";
-#print "query: ".$equery."\n";
-#print "frag: ".$frag."\n";
-#print "netloc: ".$urlobj->netloc."\n";
-#print "abs: ".$urlobj->abs."\n";
-
-
 if($url !~ /{fuzz}/){ # append the {fuzz} if not specified
 	$url = "$url/" if ($url !~ /\/$/);
 	$url = $url."{fuzz}";
@@ -246,11 +248,15 @@ if($url !~ /\/\{fuzz}$/ && defined($recursive)){
 #Proxy validations:
 if(defined($socks)){
 	if($socks !~ m/^([\d\.]+):(\d+)$/){
-		die "[-] Invalid SOCKS argument. Use syntax IP:PORT\n\n";
+		die "[-] Invalid SOCKS argument. Please use syntax IP:PORT\n\n";
 	}
 	my $socksip = $1;
 	my $socksport = $2;
-	IO::Socket::Socks::Wrapper->import({ProxyAddr => $socksip, ProxyPort => $socksport});
+	IO::Socket::Socks::Wrapper->import({
+		ProxyAddr => $socksip, 
+		ProxyPort => $socksport,
+		SocksResolve => 1,
+	});
 }else{
 	#disable socks
 	IO::Socket::Socks::Wrapper->import(0);
@@ -262,32 +268,11 @@ if(defined($socks)){
 	}
 }
 
+#this only works if SOCKS is not being used. 
+#theres no way to make this work with proxies. marked for deletion. Connection testing must rely on the first request sent only.
 
-#use Socket qw(SOCK_STREAM getaddrinfo);
-
-#my $hostname = 'www.perlmonks.org';
-#
-#my ($err, @res) = getaddrinfo($hostname, "", 
-#    {socktype => SOCK_STREAM});
-#die "Cannot getaddrinfo - $err" if $err;
-#foreach my $ai (@res) {
-#    my ($err, $ipaddr) = getnameinfo($ai->{'addr'},
-#        'NI_NUMERICHOST', 'NIx_NOSERV');
-#    die "Cannot getnameinfo - $err" if $err;
-#    print "$ipaddr";
-#}
-#
-#use Net::DNS;
-#my $resolver = new Net::DNS::Resolver();
-#my $reply = $resolver->search( 'some.website' );
-
-#this only works if SOCKS is not being used
-
-my $addr = inet_ntoa(inet_aton($host))  or die "Can't resolve $host: $!\n";
-die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
-# i need to change this because Furl will ask for the resolution of the proxy as well...
-
-
+#my $addr = inet_ntoa(inet_aton($host))  or die "Can't resolve $host: $!\n";
+#die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
 
 
 # Build list of extensions from a file.
@@ -316,15 +301,16 @@ open OUTPUT, '>>', $outputfilename or die $! if (defined($outputfilename));
 &LogPrint("[+] Targetting URL '$url'\n");
 &LogPrint("[+] Using Proxy '$proxy'\n") if ($proxy);
 &LogPrint("[+] Using SOCKS proxy '$socks'\n") if ($socks);
-
 if($delay){
+	&LogPrint("[+] Waiting $delay milliseconds between requests\n") if ($delay);
 	if($maxnumthreads != 1){
-		&LogPrint("[!] Warning: The delay parameter was specified. Number of threads will be reduced to 1\n");
+		&LogPrint( "[!] ");
+		&PrintColor('bright_yellow', "Warning: ");
+		&LogPrint("The delay parameter was specified. Number of threads will be reduced to 1\n");
 		$maxnumthreads=1;
 	}
 	$delay *=1000; #converting from micro
 }
-
 &LogPrint("[+] Using $maxnumthreads simultaneous threads\n") if ($maxnumthreads != DEF_MAXNUMTHREADS);
 if(scalar @wordlistfiles == 1){
 	&LogPrint("[+] Wordlist used: ".$wordlistfiles[0]."\n");
@@ -345,16 +331,10 @@ if(scalar @wordlistfiles == 1){
 &LogPrint("[+] Timeout period set to $timeout seconds\n") if ($timeout != DEF_TIMEOUT);
 &LogPrint("[+] Maximum number of retries set to $maxretries\n") if ($maxretries != DEF_NUMRETRIES);
 &LogPrint("[+] URL encoding disabled\n") if ($nourlencoding);
-&LogPrint("[+] Waiting $delay milliseconds between requests\n") if ($delay);
 &LogPrint("[+] Indexing words...\n");
 $|++; #autoflush buffers
 
 
-#if(defined($method)){
-#	$method = "GET";
-#}else{
-#	$method = DEF_METHOD;
-#}
 my @allwords;
 #TODO: fix bad bad bug when using {fuzz}word -e .aspx for example
 foreach my $wordfile (@wordlistfiles){
@@ -376,13 +356,11 @@ foreach my $wordfile (@wordlistfiles){
 	push @allwords, &ReadFile($wordfile,$pattern);
 }
 
-
-
 @allwords = uniq @allwords;
 #just load the url without any word as well
 unshift @allwords, '';
 
-&PrintSequence("\e[K", "[+] All words indexed. Total words scrapped: " . scalar @allwords. "\n\n");
+&PrintSequence("\e[K", "[+] All words indexed. Total words scrapped: " . scalar @allwords. "\n");
 $|--;
 
 if(!$nourlencoding){
@@ -419,9 +397,9 @@ if(!$nourlencoding){
 # e.g. it should escape this: payload%thing  but not this:  payload%2fthing
 	
 		if($word=~/[%\/]/){
-			print "[!] ";
-			&PrintColor('bright_yellow', "Warning: ");
-			print "Special characters found on wordlist and the flag --nourlenc was not specified. Characters will be encoded for safe requests.\n"; 
+			#&LogPrint ("[!] ");
+			#&PrintColor('bright_yellow', "Warning: ");
+			&LogPrint("[+] Special characters will be encoded using smart encoding\n"); 
 			last;
 		}
 	}
@@ -466,7 +444,7 @@ my %furlargs = (
 	#		#custom cached DNS resolution - Only 1 DNS per scan
     #        my ($host, $port, $timeout) = @_;
 	#		#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
-	#		$addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+	#		my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
 	#		pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
     #    },
 	'timeout'   => 3,
@@ -476,13 +454,6 @@ my %furlargs = (
 	'headers' => \@httpheaders,
 );
 $furlargs{"proxy"} = $proxy if ($proxy);
-
-# this doesn't make sense since we are testing the proxy with the proxy URL 
-#if($proxy){
-#	print "[!] Proxy specified. Testing connection to proxy...\n";
-#	&SubmitGet("$proxy");
-#	#TODO: check proxy
-#}
 
 #removed the IP address because it wasn't possible to retrieve it through socks
 print "[*] Testing connection to the website host '$host' ...\n";
@@ -526,8 +497,10 @@ do{
 		my $word = $allwords[$j];
 		$word =~ s/\r|\n//g;
 		#next if ($word =~ /^\s*$/);
-		#try to be intelligent about what to escape. This is a bit experimental
-		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@') if(!$nourlencoding); 
+		#try to be intelligent about what to escape. This is a bit experimental. Note the inital ^ which negates the regex
+		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@%'); # if(!$nourlencoding); 
+		#escape the percent symbol under certain conditions
+		$word =~ s/%(?=([^0-9A-Fa-f])|([0-9A-Fa-f][^0-9A-Fa-f]))/%25/g;
 		$sessionpayload = $url;
 		$sessionpayload =~ s/{fuzz}/$word/;
 		my $arrayindex = $j % $maxnumthreads;
@@ -760,8 +733,7 @@ sub SubmitGetList{
 			$str = "[".$ret{"httpcode"}."]   $str\n";
 			&Log($str);
 			
-			#Check for directory listing
-			
+			#Check for directory listing			
 			if($ret{"httpcode"} == 200){
 				foreach my $pattern (@dirlistpatterns){
 					print "Found possible directory listing...\n" if($ret{"content"} =~ /$pattern/i);
