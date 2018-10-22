@@ -720,6 +720,7 @@ sub SubmitGetList{
 			if($ret{"httpcode"} == 500){
 				my $errmsg = $ret{"msg"};
 				$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
+				chomp($errmsg) #needs testing
 				$url .= " :: $errmsg";
 			}
 			my $str = sprintf("   %-7s  %-80s ", $ret{"length"}, $url);

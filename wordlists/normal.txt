@@ -1567,8 +1567,8 @@ aliases
 alicante
 alice
 all
-All
 ALL
+All
 allegro
 allen
 alliance
@@ -1698,8 +1698,8 @@ apm
 apollo
 aponline
 app
-APP
 App
+APP
 app_admin
 app_browser
 app_browsers
@@ -2713,8 +2713,8 @@ CHANGELOG
 ChangeLog
 Changelog
 changelog.txt
-CHANGELOG.txt
 CHANGELOG.TXT
+CHANGELOG.txt
 changepassword
 changepw
 changepwd
@@ -5827,6 +5827,7 @@ jpgraph
 jpgs
 jpn
 jquery
+jquery-file-upload
 jQuery-File-Upload
 jQuery-File-Upload/example/upload
 jQuery-File-Upload/server/php/upload.class
@@ -6370,8 +6371,8 @@ m6_edit_item
 m6_invoice
 m6_pay
 m7
-m_images
 M_images
+m_images
 ma
 mac
 macadmin
@@ -9507,8 +9508,8 @@ sqlbuddy
 sqlmanager
 sqlnet
 sqlnet.log
-SQLQHit.asp
 sqlqhit.asp
+SQLQHit.asp
 sqlweb
 squelettes
 squelettes-dist
@@ -11059,8 +11060,8 @@ women
 wood
 word
 wordpress
-WordPress
 Wordpress
+WordPress
 words
 work
 work2

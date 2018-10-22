@@ -1869,6 +1869,7 @@ journals
 jp
 jpg
 jquery
+jquery-file-upload
 jQuery-File-Upload
 jQuery-File-Upload/example/upload
 jQuery-File-Upload/server/php/upload.class
