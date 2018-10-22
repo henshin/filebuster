@@ -1,3 +1,4 @@
+#{111*111}
 ${(111*111)}
 ${111*111}
 %252e%252e/manager/html
@@ -73,11 +74,14 @@ ${111*111}
 .web
 .well-known
 .well-known/jwks.json
-//../../
-///../../../
+///../../
+////../../../
+////server-status
 ///server-status
 //server-status
+//server-status/
 /server-status
+/server-status/
 0
 00
 0007
@@ -1612,8 +1616,8 @@ hacker
 handle
 handler
 happening
-HappyAxis.jsp
 happyaxis.jsp
+HappyAxis.jsp
 hardcore
 hardware
 harmony
@@ -1760,6 +1764,7 @@ index.htm
 index.html
 index.jsp
 index.jsp;%0a.css
+index.php
 index.php.bak
 index1
 index2
@@ -1871,9 +1876,10 @@ jpg
 jquery
 jquery-file-upload
 jQuery-File-Upload
-jQuery-File-Upload/example/upload
-jQuery-File-Upload/server/php/upload.class
-jQuery-File-Upload/server/php/UploadHandler
+jQuery-File-Upload/example/upload.php
+jQuery-File-Upload/php/index.php
+jQuery-File-Upload/server/php/upload.class.php
+jQuery-File-Upload/server/php/UploadHandler.php
 jrun
 js
 js/tiny_mce

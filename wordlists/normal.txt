@@ -1,3 +1,4 @@
+#{111*111}
 ${(111*111)}
 ${111*111}
 %252e%252e/manager/html
@@ -131,11 +132,14 @@ ${111*111}
 .www_acl
 .wwwacl
 .zip
-//../../
-///../../../
+///../../
+////../../../
+////server-status
 ///server-status
 //server-status
+//server-status/
 /server-status
+/server-status/
 0
 00
 000
@@ -1567,8 +1571,8 @@ aliases
 alicante
 alice
 all
-ALL
 All
+ALL
 allegro
 allen
 alliance
@@ -5412,8 +5416,8 @@ imap
 imapd
 imc
 img
-Img
 IMG
+Img
 img1
 img2
 img3
@@ -5471,6 +5475,7 @@ index.html
 index.inc
 index.jsp
 index.jsp;%0a.css
+index.php
 index.php-bak
 index.php.bak
 index.php3
@@ -5829,9 +5834,10 @@ jpn
 jquery
 jquery-file-upload
 jQuery-File-Upload
-jQuery-File-Upload/example/upload
-jQuery-File-Upload/server/php/upload.class
-jQuery-File-Upload/server/php/UploadHandler
+jQuery-File-Upload/example/upload.php
+jQuery-File-Upload/php/index.php
+jQuery-File-Upload/server/php/upload.class.php
+jQuery-File-Upload/server/php/UploadHandler.php
 jr
 jrun
 js
@@ -6371,8 +6377,8 @@ m6_edit_item
 m6_invoice
 m6_pay
 m7
-M_images
 m_images
+M_images
 ma
 mac
 macadmin
@@ -9508,8 +9514,8 @@ sqlbuddy
 sqlmanager
 sqlnet
 sqlnet.log
-sqlqhit.asp
 SQLQHit.asp
+sqlqhit.asp
 sqlweb
 squelettes
 squelettes-dist
