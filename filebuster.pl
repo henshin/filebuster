@@ -11,8 +11,6 @@
 
 use strict;
 use warnings;
-# nasty workaround to disable smartmatch experimental warning. Hopefully temporary
-no if $] >= 5.017011, warnings => 'experimental::smartmatch';
 use IO::Socket::Socks::Wrapper{}; # for SOCKS - should be invoked before other uses
 use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);
@@ -571,7 +569,7 @@ sub SubmitGetList{
 	my $reqcount = 0;
 
 	#TODO: make this more user configurable
-	my @recursiveignorelist = (
+	my %recursiveignorelist = map { $_ => 1} (
 		"img",
 		"images",
 		"imgs",
@@ -592,6 +590,7 @@ sub SubmitGetList{
 		"fonts",
 		"skins",
 	);
+	
 	my @dirlistpatterns = (
 		'<title>Index of \/.*?<\/title>', # Apache & nginx
 		'<a href="\/.*?">\[To Parent Directory\]<\/a>', # IIS
@@ -666,7 +665,8 @@ sub SubmitGetList{
 			$modurl .= "   -->   " .$value;
 			my $endpath = $value;
 			$endpath =~ s#.*/(.+)/#$1#;
-			if($recursive && $value eq "$url/" && !(lc($endpath) ~~ @recursiveignorelist)){ 
+			if($recursive && $value eq "$url/" &&
+					!( exists $recursiveignorelist{ lc($endpath) })){ 
 				push(@paths,"$url/");
 				$isqueued = 1;
 			}
@@ -674,7 +674,7 @@ sub SubmitGetList{
 		}
 		&Log("\n$body\n\n") if $debug;
 
-		next if (defined $hidestringheaders && $ret{"headers"} ~~ /$hidestringheaders/i);
+		next if (defined $hidestringheaders && $ret{"headers"} =~ /$hidestringheaders/i);
 		next if (defined $hidestring && $ret{"content"} =~ /$hidestring/);
 		next if (defined $force && $ret{"httpcode"} == "500");
 		#next if (defined $hidelength && $ret{"length"} == $hidelength);
