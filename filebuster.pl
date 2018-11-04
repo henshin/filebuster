@@ -29,7 +29,6 @@ use Net::DNS;
 #use IO::Socket;
 use Socket;
 use IO::Socket::SSL; # for SSL
-#Japanese power - 75% increased performance over LWP::UserAgent!
 #use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
 use URI::URL;
 use POSIX;
@@ -59,7 +58,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.9.0 
+      \/                 \/       \/           \/            \/    v0.9.1 
                                                    HTTP fuzzer by Henshin 
  
 EOF
@@ -363,37 +362,6 @@ $|--;
 
 if(!$nourlencoding){
 	for my $word (@allwords){
-
-#TODO:
-#Only encode the unsafe characters. Keep the reserved characters as is
-#The reserved characters are:
-#
-#    ampersand ("&")
-#    dollar ("$")
-#    plus sign ("+")
-#    comma (",")
-#    forward slash ("/")
-#    colon (":")
-#    semi-colon (";")
-#    equals ("=")
-#    question mark ("?")
-#    'At' symbol ("@")
-#    pound ("#").
-#
-#The characters generally considered unsafe are:
-#
-#    space (" ")
-#    less than and greater than ("<>")
-#    open and close brackets ("[]")
-#    open and close braces ("{}")
-#    pipe ("|")
-#    backslash ("\")
-#    caret ("^")
-#    percent ("%")
-
-# The intelligent escaping system should encode the '%' character only if it's not followed by 2 hex digits.
-# e.g. it should escape this: payload%thing  but not this:  payload%2fthing
-	
 		if($word=~/[%\/]/){
 			#&LogPrint ("[!] ");
 			#&PrintColor('bright_yellow', "Warning: ");
@@ -434,7 +402,6 @@ my %sslopts = (
 $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 
 my %furlargs = (
-	#inet_aton => \&Net::DNS::Lite::inet_aton,
 	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
 	#'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
 	# this worked well but was a problem when using SOCKS
@@ -453,7 +420,7 @@ my %furlargs = (
 );
 $furlargs{"proxy"} = $proxy if ($proxy);
 
-#removed the IP address because it wasn't possible to retrieve it through socks
+#removed the IP address resolution because it wasn't possible to retrieve it through socks
 print "[*] Testing connection to the website host '$host' ...\n";
 my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
@@ -494,9 +461,8 @@ do{
 	for(my $j=0; $j<scalar(@allwords); $j++){
 		my $word = $allwords[$j];
 		$word =~ s/\r|\n//g;
-		#next if ($word =~ /^\s*$/);
 		#try to be intelligent about what to escape. This is a bit experimental. Note the inital ^ which negates the regex
-		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@%'); # if(!$nourlencoding); 
+		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@%'); 
 		#escape the percent symbol under certain conditions
 		$word =~ s/%(?=([^0-9A-Fa-f])|([0-9A-Fa-f][^0-9A-Fa-f]))/%25/g;
 		$sessionpayload = $url;
@@ -725,6 +691,16 @@ sub SubmitGetList{
 			}
 			my $str = sprintf("   %-7s  %-80s ", $ret{"length"}, $url);
 			print $str;
+			#Check for directory listing
+			if($ret{"httpcode"} == 200){
+				foreach my $pattern (@dirlistpatterns){
+					if($ret{"content"} =~ /$pattern/i){
+						&PrintColor('bold white', '[');
+						&PrintColor('bright_yellow', "Directory listing");
+						&PrintColor('bold white', ']');
+					}
+				}
+			}
 			if($isqueued){
 				&PrintColor('bold white', '[');
 				&PrintColor('bright_yellow', "QUEUED");
@@ -733,16 +709,7 @@ sub SubmitGetList{
 			print "\n";
 			$str = "[".$ret{"httpcode"}."]   $str\n";
 			&Log($str);
-			
-			#Check for directory listing			
-			if($ret{"httpcode"} == 200){
-				foreach my $pattern (@dirlistpatterns){
-					print "Found possible directory listing...\n" if($ret{"content"} =~ /$pattern/i);
-				}
-			}
 		}
-
-		
 	}
 }
 
