@@ -1,47 +1,56 @@
 #!/usr/bin/perl
-# install dependencies (it can take a while):
-# > cpan install YAML Furl Benchmark Cache::LRU Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper
+# install dependencies:
+# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL
+# -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
+#   - DNS over SOCKS is not currently working 
 #   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
 #   - create a seperate file with the list of ignored directories when using recursive search
 #   - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly
 
 use strict;
 use warnings;
-# nasty workaround to disable smartmatch experimental warning. Hopefully temporary
-no if $] >= 5.017011, warnings => 'experimental::smartmatch';
+use IO::Socket::Socks::Wrapper{}; # for SOCKS - should be invoked before other uses
 use Data::Dumper;
-use Getopt::Long qw(:config no_ignore_case);	# Stupid default behaviour.
-use File::Basename qw(dirname);
+use Getopt::Long qw(:config no_ignore_case);
+use File::Basename qw(dirname fileparse);
 use URI::Escape;
 use HTML::Entities;
-use List::MoreUtils qw(uniq); #requires cpan install
+use List::MoreUtils qw(uniq); 
 use Term::ANSIColor;
 use threads;
 use threads::shared;
 use Time::HiRes qw(usleep);
 use Benchmark;
-use IO::Socket::SSL; # for SSL
-use IO::Socket::Socks::Wrapper{}; # for SOCKS
-#Japanese power - 75% increased performance over LWP::UserAgent!
-use Furl;
-use Cache::LRU;
 use Net::DNS::Lite qw(inet_aton);
-
-use Socket qw(pack_sockaddr_in inet_ntoa);
-use URI::Split qw(uri_split);
+use Furl;
+use Net::DNS;
+#use IO::Socket;
+use Socket;
+use IO::Socket::SSL; # for SSL
+#use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
+use URI::URL;
 use POSIX;
 
 #Constants
-use constant DEF_MAXNUMTHREADS	=> 2;
+use constant DEF_MAXNUMTHREADS	=> 3;
 use constant DEF_TIMEOUT		=> 5;
 use constant DEF_NUMRETRIES		=> 2;
 use constant DEF_PATTERN		=> '.';
 use constant DEF_HIDECODE		=> "404";
+use constant DEF_HTTPMETHOD		=> "GET";
+
+
 
 my $program;
 ($program = $0) =~ s#.*/##;
+my $fullpath = (defined(readlink($0))) ? readlink($0) : $0;
+my ($filename, $dir, $suffix) = fileparse($fullpath);
+#$dir will contain the directory of the filebuster script. We can use this to deduct the wordlist directory.
+#print "Filename $filename\tdirs: $dir\t wordlist dir: $dir/wordlists/normal.txt \n";
+
+my $defaultwordlist = "$dir/wordlists/normal.txt";
 
 print <<'EOF';
  ___________.__.__        __________                __                
@@ -49,8 +58,8 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.8.9 
-                                                  HTTP scanner by Henshin 
+      \/                 \/       \/           \/            \/    v0.9.1 
+                                                   HTTP fuzzer by Henshin 
  
 EOF
 
@@ -82,6 +91,7 @@ my $quiet = 0;
 my $stdoutisatty = 1;
 my $recursive;
 my $extensionsfilename = undef;
+my $method = DEF_HTTPMETHOD;
 
 GetOptions (
 	'u=s' => \$url, 
@@ -112,6 +122,7 @@ GetOptions (
 	'shortnamelist=s' => \$shortnamelist,
 	'q' => \$quiet,
 	'E=s' => \$extensionsfilename,
+	'm=s' => \$method,
 	) or exit(-1);
 
 if($help){
@@ -138,8 +149,12 @@ if($help){
         -E:                     New-line separated file of extensions to be appended.
         -r:                     Use recursive scans. This is only possible if your {fuzz} keywork is at the end 
                                 of your URL. Recursive scans respect the -p (pattern) filter if specified
+        -m: <HTTP method>       Specifies a different HTTP method to use. Default is GET. Note that if you use 
+                                HEAD, it will affect the performance. Also note that if you change to POST, you
+                                should also add the Content-Type header using the --headers argument
         -x <ip:port>            Use specified proxy. Example: 127.0.0.1:8080 or http://192.168.0.1:8123
-        -s <ip:port>            Use specified SOCKS proxy. Example: 127.0.0.1:8080
+        -s <ip:port>            Use specified SOCKS proxy. Example: 127.0.0.1:8080. Please note that the DNS 
+                                requests are not currently sent via the SOCKS proxy (library limitation) 
         -o <logfile>:           Specifies the log file to store the output. Default is /tmp/filebuster.log
         -i:                     Specifies case insensitive pattern searches
         --hc <code>:            Hides responses with the specified HTTP code. If not specified, Filebuster will
@@ -181,18 +196,28 @@ $stdoutisatty = 0 unless (-t STDOUT);
 # Assume quiet and don't print the URLs being scanned when stdout is not a TTY.
 $quiet = 1 unless $stdoutisatty;
 
-#for queue printing
+#for queued printing
 my $semaphore :shared;
 
+use Cache::LRU;
 #DNS Cache
 $Net::DNS::Lite::CACHE = Cache::LRU->new(
-	size => 256,
+	size => 3,
 );
-$Net::DNS::Lite::CACHE_TTL = 100; # this doesn't seem to affect DNS cache
 
 #Validations
-if(!$url || scalar @wordlistfiles == 0){
+if(!$url){
 	die "[-] Arguments missing. Use $program --help for instructions\n\n";
+}
+
+if( scalar @wordlistfiles == 0){
+	# last try to load the default wordlist
+	if(-e $defaultwordlist){
+		print "[!] No wordlists were chosen. Using the default one: $defaultwordlist\n";
+		push @wordlistfiles, $defaultwordlist;
+	}else{
+		die "[-] No wordlist was specific and couldn't find the default Filebuster's wordlists. Please specify wordlist manually using -w. \n\n";
+	}
 }
 
 if(defined($hidecode)){
@@ -203,29 +228,14 @@ if(defined($hidecode)){
 
 #format the url properly
 $url = "http://$url" if($url !~ /^https?:\/\//);
-#print "URL VERIFICATION: $url\n";
+my $urlobj = new URI::URL($url);
+my ($scheme, $user, $password, $host, $port, $epath, $eparams, $equery, $frag) = $urlobj->crack;
+my $netloc = $urlobj->netloc;
+
 if($url !~ /{fuzz}/){ # append the {fuzz} if not specified
 	$url = "$url/" if ($url !~ /\/$/);
 	$url = $url."{fuzz}";
 }
-
-# DNS resolve - here we can test if we can resolve the address. note that the ip resolved at this stage might not be the one used for scanning
-#print "Resolving DNS for $url\n";
-my ($scheme, $host, $urlpath, $query, $frag) = uri_split($url);
-
-#remove port from host if specified
-$host =~ s/:\d+$//g;
-#$a=$host;
-#$a =~ s/:\d+$//rg;
-#print "Testing $a ......$host \n";
-my $addr = inet_aton(( $host =~ s/:\d+$//rg ));
-# i need to change this because Furl will ask for the resolution of the proxy as well...
-
-
-#my $iphost  = gethostbyaddr($addr, AF_INET);
-die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
-my $resolvedip = inet_ntoa($addr);
-
 
 #check recursive
 if($url !~ /\/\{fuzz}$/ && defined($recursive)){
@@ -235,11 +245,15 @@ if($url !~ /\/\{fuzz}$/ && defined($recursive)){
 #Proxy validations:
 if(defined($socks)){
 	if($socks !~ m/^([\d\.]+):(\d+)$/){
-		die "[-] Invalid SOCKS argument. Use syntax IP:PORT\n\n";
+		die "[-] Invalid SOCKS argument. Please use syntax IP:PORT\n\n";
 	}
 	my $socksip = $1;
 	my $socksport = $2;
-	IO::Socket::Socks::Wrapper->import({ProxyAddr => $socksip, ProxyPort => $socksport});
+	IO::Socket::Socks::Wrapper->import({
+		ProxyAddr => $socksip, 
+		ProxyPort => $socksport,
+		SocksResolve => 1,
+	});
 }else{
 	#disable socks
 	IO::Socket::Socks::Wrapper->import(0);
@@ -250,6 +264,13 @@ if(defined($socks)){
 		}
 	}
 }
+
+#this only works if SOCKS is not being used. 
+#theres no way to make this work with proxies. marked for deletion. Connection testing must rely on the first request sent only.
+
+#my $addr = inet_ntoa(inet_aton($host))  or die "Can't resolve $host: $!\n";
+#die("[-] Cannot resolve hostname. Verify if your URL is well formed and that you have connectivity.\n\n") if(!defined($addr));
+
 
 # Build list of extensions from a file.
 if (defined($extensionsfilename)) {
@@ -277,15 +298,16 @@ open OUTPUT, '>>', $outputfilename or die $! if (defined($outputfilename));
 &LogPrint("[+] Targetting URL '$url'\n");
 &LogPrint("[+] Using Proxy '$proxy'\n") if ($proxy);
 &LogPrint("[+] Using SOCKS proxy '$socks'\n") if ($socks);
-
 if($delay){
+	&LogPrint("[+] Waiting $delay milliseconds between requests\n") if ($delay);
 	if($maxnumthreads != 1){
-		&LogPrint("[!] Warning: The delay parameter was specified. Number of threads will be reduced to 1\n");
+		&LogPrint( "[!] ");
+		&PrintColor('bright_yellow', "Warning: ");
+		&LogPrint("The delay parameter was specified. Number of threads will be reduced to 1\n");
 		$maxnumthreads=1;
 	}
 	$delay *=1000; #converting from micro
 }
-
 &LogPrint("[+] Using $maxnumthreads simultaneous threads\n") if ($maxnumthreads != DEF_MAXNUMTHREADS);
 if(scalar @wordlistfiles == 1){
 	&LogPrint("[+] Wordlist used: ".$wordlistfiles[0]."\n");
@@ -306,16 +328,10 @@ if(scalar @wordlistfiles == 1){
 &LogPrint("[+] Timeout period set to $timeout seconds\n") if ($timeout != DEF_TIMEOUT);
 &LogPrint("[+] Maximum number of retries set to $maxretries\n") if ($maxretries != DEF_NUMRETRIES);
 &LogPrint("[+] URL encoding disabled\n") if ($nourlencoding);
-&LogPrint("[+] Waiting $delay milliseconds between requests\n") if ($delay);
 &LogPrint("[+] Indexing words...\n");
 $|++; #autoflush buffers
 
 
-#if(defined($method)){
-#	$method = "GET";
-#}else{
-#	$method = DEF_METHOD;
-#}
 my @allwords;
 #TODO: fix bad bad bug when using {fuzz}word -e .aspx for example
 foreach my $wordfile (@wordlistfiles){
@@ -337,49 +353,19 @@ foreach my $wordfile (@wordlistfiles){
 	push @allwords, &ReadFile($wordfile,$pattern);
 }
 
-
-
 @allwords = uniq @allwords;
-&PrintSequence("\e[K", "[+] All words indexed. Total words scrapped: " . scalar @allwords. "\n\n");
+#just load the url without any word as well
+unshift @allwords, '';
+
+&PrintSequence("\e[K", "[+] All words indexed. Total words scrapped: " . scalar @allwords. "\n");
 $|--;
 
 if(!$nourlencoding){
 	for my $word (@allwords){
-
-#TODO:
-#Only encode the unsafe characters. Keep the reserved characters as is
-#The reserved characters are:
-#
-#    ampersand ("&")
-#    dollar ("$")
-#    plus sign ("+")
-#    comma (",")
-#    forward slash ("/")
-#    colon (":")
-#    semi-colon (";")
-#    equals ("=")
-#    question mark ("?")
-#    'At' symbol ("@")
-#    pound ("#").
-#
-#The characters generally considered unsafe are:
-#
-#    space (" ")
-#    less than and greater than ("<>")
-#    open and close brackets ("[]")
-#    open and close braces ("{}")
-#    pipe ("|")
-#    backslash ("\")
-#    caret ("^")
-#    percent ("%")
-
-# The intelligent escaping system should encode the '%' character only if it's not followed by 2 hex digits.
-# e.g. it should escape this: payload%thing  but not this:  payload%2fthing
-	
 		if($word=~/[%\/]/){
-			print "[!] ";
-			&PrintColor('bright_yellow', "Warning: ");
-			print "Special characters found on wordlist and the flag --nourlenc was not specified. Characters will be encoded for safe requests.\n"; 
+			#&LogPrint ("[!] ");
+			#&PrintColor('bright_yellow', "Warning: ");
+			&LogPrint("[+] Special characters will be encoded using smart encoding\n"); 
 			last;
 		}
 	}
@@ -387,16 +373,6 @@ if(!$nourlencoding){
 if(scalar @allwords == 0){
 	die "[-] No words found with the specified regex filter.\n\n";
 }
-
-#at this point we are sure to have a ip host to connect to 
-#my $sessionpayload = $url;
-#$sessionpayload =~ s/{fuzz}/\//;
-#my $host;
-#if($sessionpayload =~ m#(https?://)(.*?)/#){
-#	$host = $2;
-#}else{
-#	die("[-] Couldn't extract the hostname from your URL. Are you sure you're inserting something like http://website.com/?\n\n");
-#}
 
 my %httpheaders;
 #this would save some bandwidth but it affects speed.
@@ -417,8 +393,6 @@ if($customheaders){
 	}
 }
 
-
-#print Dumper %httpheaders;
 my @httpheaders = %httpheaders; #because we need an ARRAY ref in FURL
 
 my %sslopts = (
@@ -427,18 +401,18 @@ my %sslopts = (
 
 $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 
-
 my %furlargs = (
 	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
 	#'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
-	'get_address' => sub {
-			#custom cached DNS resolution - Only 1 DNS per scan
-            my ($host, $port, $timeout) = @_;
-			#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
-			$addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
-			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
-        },
-	'timeout'   => 5,
+	# this worked well but was a problem when using SOCKS
+	#'get_address' => sub {
+	#		#custom cached DNS resolution - Only 1 DNS per scan
+    #        my ($host, $port, $timeout) = @_;
+	#		#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
+	#		my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+	#		pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
+    #    },
+	'timeout'   => 3,
 	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
@@ -446,24 +420,10 @@ my %furlargs = (
 );
 $furlargs{"proxy"} = $proxy if ($proxy);
 
-# this doesn't make sense since we are testing the proxy with the proxy URL 
-#if($proxy){
-#	print "[!] Proxy specified. Testing connection to proxy...\n";
-#	&SubmitGet("$proxy");
-#	#TODO: check proxy
-#}
-
-
-print "[*] Testing connection to the website host '$host' ($resolvedip)...\n";
-
-#my $sessionpayload = "$scheme://$host/7ddf32e17a6ac5ce04a8ecbf782ca509.ext";
-#instead of requesting a random file, why not just load the web root?
-my $sessionpayload = "$scheme://$host/";
-
+#removed the IP address resolution because it wasn't possible to retrieve it through socks
+print "[*] Testing connection to the website host '$host' ...\n";
+my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
-#my %ret = &SubmitGet($url);
-
-print "[*] Web site returned ". $ret{"httpcode"}."\n";
 if($ret{"httpcode"} == 500){
 	if(!$force){
 		print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
@@ -482,7 +442,7 @@ if($ret{"httpcode"} == 500){
 	}
 
 }else{
-	print "[+] Connected successfuly!\n\n";
+	print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
 }
 print "[CODE] [LENGTH] [URL]\n";
 
@@ -501,9 +461,10 @@ do{
 	for(my $j=0; $j<scalar(@allwords); $j++){
 		my $word = $allwords[$j];
 		$word =~ s/\r|\n//g;
-		next if ($word =~ /^\s*$/);
-		#try to be intelligent about what to escape. This is a bit experimental
-		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@') if(!$nourlencoding); 
+		#try to be intelligent about what to escape. This is a bit experimental. Note the inital ^ which negates the regex
+		$word=uri_escape($word,'^A-Za-z0-9\-\._~&\$\+,\\\/:;=?@%'); 
+		#escape the percent symbol under certain conditions
+		$word =~ s/%(?=([^0-9A-Fa-f])|([0-9A-Fa-f][^0-9A-Fa-f]))/%25/g;
 		$sessionpayload = $url;
 		$sessionpayload =~ s/{fuzz}/$word/;
 		my $arrayindex = $j % $maxnumthreads;
@@ -550,7 +511,6 @@ sub SubmitGet{
 	#}
 	my $furl = Furl::HTTP->new(%furlargs);
 	#print Dumper $furl;
-	#print "Just checking one last time the URL: $url\n";
 	my ($minor_version, $code, $msg, $headers, $body) = $furl->request(
 		'method' => 'GET',
 		'url' => $url,
@@ -575,7 +535,7 @@ sub SubmitGetList{
 	my $reqcount = 0;
 
 	#TODO: make this more user configurable
-	my @recursiveignorelist = [
+	my %recursiveignorelist = map { $_ => 1} (
 		"img",
 		"images",
 		"imgs",
@@ -595,7 +555,13 @@ sub SubmitGetList{
 		"themes",
 		"fonts",
 		"skins",
-	];
+	);
+	
+	my @dirlistpatterns = (
+		'<title>Index of \/.*?<\/title>', # Apache & nginx
+		'<a href="\/.*?">\[To Parent Directory\]<\/a>', # IIS
+		'<h\d>Directory listing for \/.*?<\/h\d>', # Python SimpleHTTPServer
+	);
 
 	#this will be used to analyze previous requests and make actions according to certain responses
 	my @respqueue;
@@ -665,7 +631,8 @@ sub SubmitGetList{
 			$modurl .= "   -->   " .$value;
 			my $endpath = $value;
 			$endpath =~ s#.*/(.+)/#$1#;
-			if($recursive && $value eq "$url/" && !(lc($endpath) ~~ @recursiveignorelist)){ 
+			if($recursive && $value eq "$url/" &&
+					!( exists $recursiveignorelist{ lc($endpath) })){ 
 				push(@paths,"$url/");
 				$isqueued = 1;
 			}
@@ -673,7 +640,7 @@ sub SubmitGetList{
 		}
 		&Log("\n$body\n\n") if $debug;
 
-		next if (defined $hidestringheaders && $ret{"headers"} ~~ /$hidestringheaders/i);
+		next if (defined $hidestringheaders && grep(/$hidestringheaders/i, @{$ret{"headers"}})>0);
 		next if (defined $hidestring && $ret{"content"} =~ /$hidestring/);
 		next if (defined $force && $ret{"httpcode"} == "500");
 		#next if (defined $hidelength && $ret{"length"} == $hidelength);
@@ -702,13 +669,12 @@ sub SubmitGetList{
 
 		{
 			my $color = 'reset';
-			
 			$color = 'bright_green'		if($ret{"httpcode"} =~ /2\d\d/);
-			$color = 'bright_yellow' 	if($ret{"httpcode"} =~ /3\d\d/);			
+			$color = 'bright_yellow' 	if($ret{"httpcode"} =~ /3\d\d/);
 			$color = 'bright_red' 		if($ret{"httpcode"} =~ /4\d\d/);
 			$color = 'bright_cyan' 		if($ret{"httpcode"} =~ /401/);
 			$color = 'bright_magenta' 	if($ret{"httpcode"} =~ /5\d\d/);
-						
+
 			#preventing threads from output prints at the same time
 			lock($semaphore);
 			&PrintSequence("\e[K");
@@ -720,10 +686,21 @@ sub SubmitGetList{
 			if($ret{"httpcode"} == 500){
 				my $errmsg = $ret{"msg"};
 				$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
+				#chomp($errmsg) #needs testing
 				$url .= " :: $errmsg";
 			}
 			my $str = sprintf("   %-7s  %-80s ", $ret{"length"}, $url);
 			print $str;
+			#Check for directory listing
+			if($ret{"httpcode"} == 200){
+				foreach my $pattern (@dirlistpatterns){
+					if($ret{"content"} =~ /$pattern/i){
+						&PrintColor('bold white', '[');
+						&PrintColor('bright_yellow', "Directory listing");
+						&PrintColor('bold white', ']');
+					}
+				}
+			}
 			if($isqueued){
 				&PrintColor('bold white', '[');
 				&PrintColor('bright_yellow', "QUEUED");
@@ -733,8 +710,6 @@ sub SubmitGetList{
 			$str = "[".$ret{"httpcode"}."]   $str\n";
 			&Log($str);
 		}
-
-		
 	}
 }
 
