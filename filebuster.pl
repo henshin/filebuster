@@ -674,7 +674,7 @@ sub SubmitGetList{
 		}
 		&Log("\n$body\n\n") if $debug;
 
-		next if (defined $hidestringheaders && $ret{"headers"} =~ /$hidestringheaders/i);
+		next if (defined $hidestringheaders && grep(/$hidestringheaders/i, @{$ret{"headers"}})>0);
 		next if (defined $hidestring && $ret{"content"} =~ /$hidestring/);
 		next if (defined $force && $ret{"httpcode"} == "500");
 		#next if (defined $hidelength && $ret{"length"} == $hidelength);
