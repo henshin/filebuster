@@ -25,7 +25,6 @@ use Time::HiRes qw(usleep);
 use Benchmark;
 use Net::DNS::Lite qw(inet_aton);
 use Furl;
-use Net::DNS;
 use Socket;
 use IO::Socket::SSL; # for SSL
 use URI::URL;
