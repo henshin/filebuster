@@ -58,7 +58,11 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
+<<<<<<< Updated upstream
       \/                 \/       \/           \/            \/    v0.9.1 
+=======
+      \/                 \/       \/           \/            \/    v0.9.3 
+>>>>>>> Stashed changes
                                                    HTTP fuzzer by Henshin 
  
 EOF
@@ -328,6 +332,7 @@ if(scalar @wordlistfiles == 1){
 &LogPrint("[+] Timeout period set to $timeout seconds\n") if ($timeout != DEF_TIMEOUT);
 &LogPrint("[+] Maximum number of retries set to $maxretries\n") if ($maxretries != DEF_NUMRETRIES);
 &LogPrint("[+] URL encoding disabled\n") if ($nourlencoding);
+&LogPrint("[+] Using $method HTTP method\n") if ($method != DEF_HTTPMETHOD);
 &LogPrint("[+] Indexing words...\n");
 $|++; #autoflush buffers
 
@@ -396,7 +401,9 @@ if($customheaders){
 my @httpheaders = %httpheaders; #because we need an ARRAY ref in FURL
 
 my %sslopts = (
-	'SSL_verify_mode' => SSL_VERIFY_NONE()
+	'SSL_verify_mode' => SSL_VERIFY_NONE(),
+	'SSL_cipher_list' => "ECDHE-RSA-AES128-SHA256,ECDHE-RSA-AES256-SHA384,ECDHE-RSA-AES128-GCM-SHA256,ECDHE-RSA-AES256-GCM-SHA384,ECDHE-ECDSA-AES128-SHA256,ECDHE-ECDSA-AES256-SHA384,ECDHE-ECDSA-AES128-GCM-SHA256,ECDHE-ECDSA-AES256-GCM-SHA384", #WAF Bypass based on 0x09AL research (https://0x09al.github.io/waf/bypass/ssl/2018/07/02/web-application-firewall-bypass.html)
+	'SSL_honor_cipher_order' => 0,
 );
 
 $sslopts{"SSL_version"} = $sslversion if ($sslversion);
@@ -425,25 +432,36 @@ print "[*] Testing connection to the website host '$host' ...\n";
 my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
 if($ret{"httpcode"} == 500){
-	if(!$force){
-		print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
-		if($ret{"msg"}){
-			print "[!] Details: " . $ret{"msg"} . "\n" if $ret{"msg"};
-			if($ret{"msg"} =~ /sslv3/i){
-				print "[*] Note: It seems that the error is related to SSLv3. A possible workaround is to try to use the '--sslversion SSLv3' flag to force filebuster to use that version.\n";
+	print "WAF bypass didn't work. Retrying with fallback ciphers\n";
+	%sslopts = (
+		'SSL_verify_mode' => SSL_VERIFY_NONE(),
+		'SSL_cipher_list' => ".", 
+		'SSL_honor_cipher_order' => 1,
+	);
+	%ret = &SubmitGet($sessionpayload);
+	if($ret{"httpcode"} == 500){
+		if(!$force){
+			print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
+			if($ret{"msg"}){
+				print "[!] Details: " . $ret{"msg"} . "\n" if $ret{"msg"};
+				if($ret{"msg"} =~ /sslv3/i){
+					print "[*] Note: It seems that the error is related to SSLv3. A possible workaround is to try to use the '--sslversion SSLv3' flag to force filebuster to use that version.\n";
+				}
 			}
+			print "[!] Note: If this was expected, you can use the flag -f (Force) to force FileBuster to continue anyway.\n";
+			print "\n";
+			exit -1;
+		}else{
+			print "[!] Website returned error 500. Since the parameter -f (Force) was specified, FileBuster will continue anyway...\n";
+			print "[!] Results with code 500 will be filtered from output automatically\n";
 		}
-		print "[!] Note: If this was expected, you can use the flag -f (Force) to force FileBuster to continue anyway.\n";
-		print "\n";
-		exit -1;
-	}else{
-		print "[!] Website returned error 500. Since the parameter -f (Force) was specified, FileBuster will continue anyway...\n";
-		print "[!] Results with code 500 will be filtered from output automatically\n";
 	}
-
-}else{
-	print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
+	else
+	{
+		print "Site doesn't support Eliptic Curve. WAF might filter our payloads\n";
+	}
 }
+print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
 print "[CODE] [LENGTH] [URL]\n";
 
 my @paths:shared=();
@@ -588,7 +606,7 @@ sub SubmitGetList{
 		eval {
 			do{
 				($minor_version, $code, $msg, $headers, $body) = $furl->request(
-					'method' => "GET",
+					'method' => $method,
 					'url' => $url,
 				);
 				&usleep($delay) if $delay;
@@ -686,7 +704,7 @@ sub SubmitGetList{
 			if($ret{"httpcode"} == 500){
 				my $errmsg = $ret{"msg"};
 				$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
-				#chomp($errmsg) #needs testing
+				chomp($errmsg); 
 				$url .= " :: $errmsg";
 			}
 			my $str = sprintf("   %-7s  %-80s ", $ret{"length"}, $url);
