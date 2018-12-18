@@ -1,11 +1,16 @@
 #{111*111}
 ${(111*111)}
 ${111*111}
+%09/example.com
 %252e%252e/manager/html
 %252f%252fserver-status
 %252fserver-status
 %2e%2e/manager/html
+%2f%2fexample.com
+%2f%5c%2f%67%6f%6f%67%6c%65%2e%63%6f%6d/
 %2F../../../
+%5cexample.com
+%68%74%74%70%3a%2f%2f%67%6f%6f%67%6c%65%2e%63%6f%6d
 %e2%80%aesutats-revres
 %{111*111}
 ..%3B/manager/html
@@ -39,11 +44,8 @@ ${111*111}
 .dat
 .DS_Store
 .env
-<<<<<<< Updated upstream
-=======
 .example.com
 .FBCIndex
->>>>>>> Stashed changes
 .forward
 .ftpquota
 .git
@@ -123,8 +125,6 @@ ${111*111}
 .web
 .well-known
 .well-known/jwks.json
-<<<<<<< Updated upstream
-=======
 .zip
 /%09/example.com
 /%5cexample.com
@@ -132,15 +132,47 @@ ${111*111}
 //%5cexample.com
 ///%09/example.com
 ///%5cexample.com
->>>>>>> Stashed changes
 ///../../
 ////../../../
+////example.com
+////example.com/
 ////server-status
+///\;@example.com
+///example.com/
+///example.com/%2e%2e
+///example.com/%2e%2e%2f
+///example.com/%2f%2e%2e
+///example.com/%2f..
+///example.com//
 ///server-status
+//\;@example.com
+//example.com
+//example.com/
+//example.com/%2e%2e
+//example.com/%2e%2e%2f
+//example.com/%2f%2e%2e
+//example.com/%2f..
+//example.com//
+//http://example.com/%2e%2e
 //server-status
 //server-status/
+/example.com
+/example.com/
+/example.com/%2e%2e
+/example.com/%2e%2e%2f
+/example.com/%2f%2e%2e
+/example.com/%2f..
+/example.com//
+/example.com/mypage.php%3f/tunnel-web
+/google%00.com
+/google%E3%80%82com
+/http://example.com/%2e%2e
+/https:///example.com/%2e%2e
+/https://example.com/%2e%2e%2f
+/https://example.com//
 /server-status
 /server-status/
+/tunnel-web.example.com/
 0
 00
 0007
@@ -274,9 +306,6 @@ ${111*111}
 97
 ;/..;/
 ;name=test/
-<<<<<<< Updated upstream
-@
-=======
 <>//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
@@ -286,7 +315,6 @@ ${111*111}
 ?url=Https://example.com&next=Https://example.com&redirect=Https://example.com&redir=Https://example.com&rurl=Https://example.com&redirect_uri=Https://example.com
 \/\/example.com/
 \/example.com/
->>>>>>> Stashed changes
 _
 __admin
 __test
@@ -837,11 +865,8 @@ aspx
 asset
 assetmanagement
 assets
-<<<<<<< Updated upstream
-=======
 assets/file:%2f%2f/
 associate
->>>>>>> Stashed changes
 ast
 async
 at
@@ -1205,8 +1230,8 @@ cgiwrap
 ch
 change
 change_password
-ChangeLog
 CHANGELOG
+ChangeLog
 changelog
 CHANGELOG.txt
 changelog.txt
@@ -1355,11 +1380,8 @@ compaq
 compare
 comparison
 compat
-<<<<<<< Updated upstream
-=======
 compile
 compilerconfig.json
->>>>>>> Stashed changes
 complaint
 complaints
 complete
@@ -1913,6 +1935,14 @@ ewebeditor
 ews
 ex
 example
+example.com/%2e%2e
+example.com/%2f%2e%2e
+example.com/..;/css
+example.com/..;/docs
+example.com/..;/docs/appdev
+example.com/..;/examples
+example.com/..;/examples/jsp
+example.com/..;/manager/html
 examples
 examples/servlets/index.html
 examplesWebApp/InteractiveQuery.jsp
@@ -2277,7 +2307,6 @@ handler
 handlers
 happening
 happyaxis.jsp
-HappyAxis.jsp
 hardcore
 hardware
 harm
@@ -2375,10 +2404,33 @@ htmls
 htpasswd
 htpasswd.bak
 http
+http://%67%6f%6f%67%6c%65%2e%63%6f%6d
+http://example.com
+http://example.com/%2e%2e
+http://example.com/..;/css
+http://example.com/..;/docs
+http://example.com/..;/docs/appdev
+http://example.com/..;/examples
+http://example.com/..;/examples/jsp
+http://example.com/..;/manager/html
+http:/example.com
 httpd
 httpd.conf
 httpdocs
 https
+https:/%5cexample.com/
+https://%09/example.com
+https://%5cexample.com
+https:///example.com/%2e%2e
+https:///example.com/%2f%2e%2e
+https://example.com
+https://example.com/
+https://example.com/%2e%2e
+https://example.com/%2e%2e%2f
+https://example.com/%2f%2e%2e
+https://example.com/%2f..
+https://example.com//
+https:example.com
 hu
 human
 humans
@@ -2643,7 +2695,6 @@ journals
 jp
 jpg
 jquery
-jquery-file-upload
 jQuery-File-Upload
 jQuery-File-Upload/example/upload.php
 jQuery-File-Upload/php/index.php
@@ -3347,7 +3398,9 @@ p2p
 pa
 pack
 package
+package.json
 packages
+packages.config
 packaging
 pad
 padmin
@@ -3836,6 +3889,12 @@ red
 redesign
 redir
 redirect
+redirect?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
+redirect?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
+redirect?url=/\/example.com&next=/\/example.com&redirect=/\/example.com&redir=/\/example.com&rurl=/\/example.com
+redirect?url=/\/example.com&next=/\/example.com&redirect=/\/example.com&redir=/\/example.com&rurl=/\/example.com&redirect_uri=/\/example.com
+redirect?url=http://example.com&next=http://example.com&redirect=http://example.com&redir=http://example.com&rurl=http://example.com
+redirect?url=Https://example.com&next=Https://example.com&redirect=Https://example.com&redir=Https://example.com&rurl=Https://example.com&redirect_uri=Https://example.com
 redirection
 redirector
 redirects
