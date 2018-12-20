@@ -30,6 +30,7 @@ ${111*111}
 .bash_logout
 .bash_profile
 .bashrc
+.bowerrc
 .buildpath
 .bz2
 .cache
@@ -307,6 +308,7 @@ ${111*111}
 ;/..;/
 ;name=test/
 <>//example.com
+?sling:authRequestLogin=1
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com
@@ -359,7 +361,9 @@ _old
 _pages
 _phpmyadmin
 _private
+_search?pretty
 _siteadmin
+_snapshot/?pretty
 _source
 _src
 _temp
@@ -448,7 +452,11 @@ activities
 activity
 actual
 actuator/auditevents
+actuator/beans
+actuator/configprops
 actuator/env
+actuator/health
+actuator/info
 ad
 ada
 adadmin
@@ -790,9 +798,11 @@ apc
 apex
 aphtpasswd.html
 api
+api/console/api_server
 apis
 apl
 app
+app.js
 app_admin
 App_GlobalResources
 App_LocalResources
@@ -1213,6 +1223,7 @@ cgi
 cgi-admin
 cgi-bin
 cgi-bin/awstats.pl
+cgi-bin/rpc/index.pl
 cgi-bin2
 cgi-dos
 cgi-exe
@@ -1427,6 +1438,7 @@ connectors
 console
 ConsoleHelp
 constants
+constants.js
 consultation
 consulting
 consumer
@@ -1534,6 +1546,7 @@ crop
 cross
 crossdomain.xml
 crs
+crx/explorer/index.jsp;%0A.css
 crypt
 crypto
 cs
@@ -2371,6 +2384,7 @@ hooks
 hop
 horde
 host
+host-manager/html
 hostadmin
 hosted
 hosting
@@ -2611,6 +2625,8 @@ invitation
 invite
 invoice
 invoices
+invoker/EJBInvokerServlet
+invoker/JMXInvokerServlet
 io
 ioncube
 ip
@@ -2679,6 +2695,7 @@ jj
 jmssender
 jmstrader
 jmx-console
+jmx-console/HtmlAdaptor
 jo
 job
 jobs
@@ -2726,6 +2743,7 @@ k
 k2
 ka
 kadmin
+karma.conf.js
 katalog
 kb
 kcaptcha
@@ -2968,6 +2986,8 @@ mailman
 mails
 mailto
 main
+main.jsp
+main.jsp.bak
 mainadmin
 mainfile
 mainframe
@@ -3447,6 +3467,7 @@ password.html
 password.txt
 passwords
 passwords.txt
+PasswordVault
 past
 paste
 pat
@@ -3762,6 +3783,9 @@ provider
 providers
 proxies
 proxy
+proxy/smhstatus
+proxy/smhui/getaiccert
+proxy/smhui/getlogininfo
 prueba
 pruebas
 prv
@@ -4011,6 +4035,7 @@ rotate
 route
 router
 routes
+routes.js
 rp
 rpc
 rpm
@@ -4090,6 +4115,7 @@ Scripts
 sd
 sdk
 se
+seam/resource/remoting/interface.js
 search
 Search
 search-results
@@ -4518,6 +4544,7 @@ sysbackup
 syslog
 system
 system-administration
+system/console
 system_administration
 system_web
 systemadmin
@@ -4583,6 +4610,7 @@ teen
 tel
 tele
 telephone
+Telerik.Web.UI.DialogHandler.aspx?dp=.
 television
 tell_a_friend
 tell_friend
@@ -4984,6 +5012,7 @@ wcs
 weather
 web
 web-console
+web-console/Invoker
 WEB-INF
 WEB-INF./web.xml
 WEB-INF/classes

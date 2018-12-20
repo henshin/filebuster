@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # install dependencies:
-# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL
+# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU
 # -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
@@ -26,6 +26,7 @@ use Benchmark;
 use Net::DNS::Lite qw(inet_aton);
 use Furl;
 use Net::DNS;
+use Cache::LRU;
 #use IO::Socket;
 use Socket;
 use IO::Socket::SSL; # for SSL
@@ -48,9 +49,7 @@ my $program;
 my $fullpath = (defined(readlink($0))) ? readlink($0) : $0;
 my ($filename, $dir, $suffix) = fileparse($fullpath);
 #$dir will contain the directory of the filebuster script. We can use this to deduct the wordlist directory.
-#print "Filename $filename\tdirs: $dir\t wordlist dir: $dir/wordlists/normal.txt \n";
-
-my $defaultwordlist = "$dir/wordlists/normal.txt";
+my $defaultwordlist = "$dir/wordlists/fast.txt";
 
 print <<'EOF';
  ___________.__.__        __________                __                
@@ -58,8 +57,8 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.9.3 
-                                                   HTTP fuzzer by Henshin 
+      \/                 \/       \/           \/            \/    v0.9.4 
+                                       HTTP fuzzer by Henshin (@henshinpt)
  
 EOF
 
@@ -130,22 +129,23 @@ if($help){
     Arguments:
         -u <url>:               Specifies the URL to analyze. Use the tag {fuzz} to indicate the location 
                                 where you want to inject the payloads. If ommited, it will be appended to the
-                                specified URL automatically
+                                end of specified URL automatically
                                 Example: http://www.website.com/files/test{fuzz}.php
         -w <path>:              Specifies the path to the wordlist(s). This can be either the path to a 
-                                single file or a path with shell 
-                                wildcards for multiple files. Example: /home/user/*.txt
+                                single file or multiple files using wildcards. Example: /home/user/*.txt. 
+                                If not specified, it will attempt to locate and load the fast.txt wordlist 
+                                automatically
         -p <pattern>:           Regex style pattern to filter specific words from the selected wordlists. 
                                 If you use special regex characters like the pipe (|) remember to enclose 
                                 the parameter in quotes. Example: '^(sha|res)'
         -t <num>:               Maximum number of threads to use. If you use more than 3 threads, you'll 
-                                probably start flooding the web server with traffic. 2 threads
+                                probably start flooding the web server with traffic. 3 threads
                                 should provide a very fast request rate without not many errors. 
-                                Default: 2 threads
+                                Default: 3 threads
         -f:                     Force FileBuster to proceed with the attack even if the initial request 
                                 returns error code 500
         -e:                     Try additional file extensions. This will be appended after the {fuzz} payload.
-                                You can specify multiple extensions separeted by comma. Example: .xml,.html
+                                You can specify multiple extensions separeted by comma. Example: xml,html
         -E:                     New-line separated file of extensions to be appended.
         -r:                     Use recursive scans. This is only possible if your {fuzz} keywork is at the end 
                                 of your URL. Recursive scans respect the -p (pattern) filter if specified
@@ -199,7 +199,6 @@ $quiet = 1 unless $stdoutisatty;
 #for queued printing
 my $semaphore :shared;
 
-use Cache::LRU;
 #DNS Cache
 $Net::DNS::Lite::CACHE = Cache::LRU->new(
 	size => 3,
@@ -328,7 +327,7 @@ if(scalar @wordlistfiles == 1){
 &LogPrint("[+] Timeout period set to $timeout seconds\n") if ($timeout != DEF_TIMEOUT);
 &LogPrint("[+] Maximum number of retries set to $maxretries\n") if ($maxretries != DEF_NUMRETRIES);
 &LogPrint("[+] URL encoding disabled\n") if ($nourlencoding);
-&LogPrint("[+] Using $method HTTP method\n") if ($method != DEF_HTTPMETHOD);
+&LogPrint("[+] Using $method HTTP method\n") if ($method ne DEF_HTTPMETHOD);
 &LogPrint("[+] Indexing words...\n");
 $|++; #autoflush buffers
 
@@ -406,7 +405,7 @@ $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 
 my %furlargs = (
 	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
-	#'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
+	'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
 	# this worked well but was a problem when using SOCKS
 	#'get_address' => sub {
 	#		#custom cached DNS resolution - Only 1 DNS per scan
@@ -416,7 +415,7 @@ my %furlargs = (
 	#		pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
     #    },
 	'timeout'   => 3,
-	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
+	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
@@ -752,6 +751,7 @@ sub ReadFile{
 	}
 	chomp($extensions);	
 	my @exts = split(/,/,$extensions);
+	@exts = map { ".".$_ } @exts;
 	unshift @exts, ""; # add a dummy null extension
 
 	while( my $line = <FILE>){

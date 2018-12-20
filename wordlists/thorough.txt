@@ -49,6 +49,7 @@ ${111*111}
 .bower-cache
 .bower-registry
 .bower-tmp
+.bowerrc
 .build
 .buildpath
 .builds
@@ -1433,6 +1434,7 @@ ${111*111}
 ;/..;/
 ;name=test/
 <>//example.com
+?sling:authRequestLogin=1
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com
@@ -1788,6 +1790,7 @@ _script
 _scriptlibrary
 _scripts
 _search
+_search?pretty
 _search_cache
 _secure
 _server
@@ -1803,6 +1806,7 @@ _siteadmin
 _sitemap
 _sites
 _smarty
+_snapshot/?pretty
 _source
 _special
 _splash
@@ -2195,7 +2199,11 @@ actualite
 actualites
 actualiza
 actuator/auditevents
+actuator/beans
+actuator/configprops
 actuator/env
+actuator/health
+actuator/info
 acura
 ad
 ad-groups
@@ -2923,8 +2931,8 @@ administrator/login.html
 administrator/logs
 administrator/phpMyAdmin/
 administrator/phpmyadmin/
-administrator/pma/
 administrator/PMA/
+administrator/pma/
 administrator/web/
 administrator2
 administratoraccounts
@@ -3629,6 +3637,7 @@ aphtpasswd.html
 api
 api-doc
 api.log
+api/console/api_server
 api/error_log
 api/swagger.yml
 api2
@@ -3649,6 +3658,7 @@ App
 APP
 app-admin
 app.config
+app.js
 app/.htaccess
 app/bin
 app/composer.json
@@ -3700,8 +3710,8 @@ App_Code
 app_code
 app_config
 app_controls
-App_Data
 app_data
+App_Data
 app_dev
 App_GlobalResources
 app_js
@@ -5604,8 +5614,8 @@ capricorn
 caps
 captain
 captcha
-CAPTCHA
 Captcha
+CAPTCHA
 captchaform
 captchas
 caption
@@ -5941,6 +5951,7 @@ cgi-bin/index.html
 cgi-bin/logi
 cgi-bin/login
 cgi-bin/php.ini
+cgi-bin/rpc/index.pl
 cgi-bin/test-cgi
 cgi-bin/test.cgi
 cgi-bin2
@@ -6972,6 +6983,7 @@ constant
 constantcontact
 constantes
 constants
+constants.js
 constellation
 constitution
 construccion
@@ -7371,6 +7383,7 @@ cruise-holidays
 cruises
 crunchlogs
 crv
+crx/explorer/index.jsp;%0A.css
 crypt
 crypto
 crystal
@@ -7680,8 +7693,8 @@ database.yml~
 database/database/
 database/phpMyAdmin/
 database/phpmyadmin/
-database/phpMyAdmin2/
 database/phpmyadmin2/
+database/phpMyAdmin2/
 database_admin
 Database_Administration
 database_administration
@@ -7752,10 +7765,10 @@ db/dbweb/
 db/main.mdb
 db/myadmin/
 db/phpMyAdmin-2/
-db/phpmyadmin/
 db/phpMyAdmin/
-db/phpmyadmin2/
+db/phpmyadmin/
 db/phpMyAdmin2/
+db/phpmyadmin2/
 db/webadmin/
 db/webdb/
 db/websql/
@@ -12260,8 +12273,8 @@ imdb
 imed
 imesync
 img
-IMG
 Img
+IMG
 img1
 img2
 img3
@@ -12422,8 +12435,8 @@ index.jsp;%0a.css
 index.old
 index.orig
 index.php
-index.PHP
 INDEX.PHP
+index.PHP
 index.php-bak
 index.php.bak
 index.php/login
@@ -12635,8 +12648,8 @@ install.aspx
 install.bak
 install.htm
 INSTALL.htm
-INSTALL.html
 install.html
+INSTALL.html
 install.inc
 install.log
 INSTALL.md
@@ -12785,6 +12798,7 @@ invoice
 invoice_media
 invoices
 invoker
+invoker/EJBInvokerServlet
 invoker/JMXInvokerServlet
 invt
 inxy
@@ -13232,8 +13246,8 @@ jseditors
 jserver
 jsession
 jsf
-jsFiles
 jsfiles
+jsFiles
 jsinc
 jsky
 jslib
@@ -13336,6 +13350,7 @@ karen
 kariera
 karina
 karma
+karma.conf.js
 karriere
 kart
 karta
@@ -14179,8 +14194,8 @@ log
 Log
 LOG
 log-in
-Log-in/
 Log-In/
+Log-in/
 log-viewer
 log.htm
 log.html
@@ -14471,8 +14486,8 @@ m6_pay
 m7
 m8
 m9
-m_images
 M_images
+m_images
 ma
 ma-fr
 mab.nsf
@@ -14594,6 +14609,8 @@ mailtofriend
 main
 Main
 main.cgi
+main.jsp
+main.jsp.bak
 main.mdb
 main/login
 main1
@@ -15010,8 +15027,8 @@ Members
 members-access
 members-area
 members-only
-members.cgi
 Members.cgi
+members.cgi
 members.csv
 members.htm
 Members.htm
@@ -15867,8 +15884,8 @@ mysql_admin
 mysql_debug.sql
 mysql_pulsechck
 mysqladmin
-MySQLAdmin
 MySQLadmin
+MySQLAdmin
 mysqladmin/scripts/setup
 mysqld
 mysqldumper
@@ -17129,8 +17146,8 @@ pageflip
 pageid
 pageimg
 pageindex
-pagenavigation
 pageNavigation
+pagenavigation
 pagenotfound
 pagepeel
 pager
@@ -17288,12 +17305,12 @@ password.log
 password.mdb
 password.sqlite
 password.txt
-passWord.txt
 Password.txt
+passWord.txt
 password_resets
-passwordlist.txt
-Passwordlist.txt
 passwordList.txt
+Passwordlist.txt
+passwordlist.txt
 passwordlist/
 passwordlists/
 passwordrecovery
@@ -17302,8 +17319,9 @@ passwords.html
 passwords.mdb
 passwords.sqlite
 passwords.txt
-Passwords.txt
 passWords.txt
+Passwords.txt
+PasswordVault
 past
 pasta
 paste
@@ -17706,9 +17724,9 @@ phpinclude
 phpincludes
 phpinfo
 phpInfo
-PHPinfo
-PHPINFO
 PhpInfo
+PHPINFO
+PHPinfo
 phpinfo.php3
 phpinfo.php4
 phpinfo.php5
@@ -17853,10 +17871,10 @@ phpMyAdmin-4/
 phpmyadmin-old
 phpmyadmin/scripts/setup
 phpMyAdmin/scripts/setup
-phpMyAdmin0
 phpmyadmin0
-phpMyAdmin1
+phpMyAdmin0
 phpmyadmin1
+phpMyAdmin1
 phpmyadmin2
 phpMyAdmin2
 phpmyadmin3
@@ -18250,10 +18268,10 @@ portal
 PORTAL
 portal2
 PORTAL2
-PORTAL30
 portal30
-portal30_sso
+PORTAL30
 PORTAL30_SSO
+portal30_sso
 portal_
 portal_css
 portal_kss
@@ -18812,6 +18830,9 @@ provost
 proxies
 proxy
 proxy.pac
+proxy/smhstatus
+proxy/smhui/getaiccert
+proxy/smhui/getlogininfo
 proxyc
 proyectos
 prp
@@ -19350,8 +19371,8 @@ recursos
 recycle
 recycle-bin
 recycle_bin
-Recycled
 recycled
+Recycled
 red
 red2
 redactie
@@ -19946,6 +19967,7 @@ roundup
 route
 router
 routes
+routes.js
 routines
 routing
 row
@@ -20412,6 +20434,7 @@ sea
 seafood
 seagate
 seal
+seam/resource/remoting/interface.js
 sean
 search
 Search
@@ -20719,8 +20742,8 @@ servlet/ErrorReporter
 servlet/hello
 servlet/HelloWorldServlet
 servlet/HitCount
-servlet/Oracle.xml.xsql.XSQLServlet/soapdocs/webapps/soap/WEB-INF/config/soapConfig.xml
 servlet/oracle.xml.xsql.XSQLServlet/soapdocs/webapps/soap/WEB-INF/config/soapConfig.xml
+servlet/Oracle.xml.xsql.XSQLServlet/soapdocs/webapps/soap/WEB-INF/config/soapConfig.xml
 servlet/oracle.xml.xsql.XSQLServlet/xsql/lib/XSQLConfig.xml
 servlet/Oracle.xml.xsql.XSQLServlet/xsql/lib/XSQLConfig.xml
 servlet/SimpleServlet
@@ -21058,8 +21081,8 @@ signed
 signer
 signin
 Signin
-signin.cgi
 Signin.cgi
+signin.cgi
 Signin.htm
 signin.htm
 signin.html
@@ -21070,8 +21093,8 @@ signin.pl
 Signin.pl
 Signin.py
 signin.py
-signin.rb
 Signin.rb
+signin.rb
 signin.shtml
 Signin.shtml
 signin/oauth/
@@ -21744,8 +21767,8 @@ sql/php-myadmin/
 sql/phpmanager/
 sql/phpmy-admin/
 sql/phpMyAdmin/
-sql/phpMyAdmin2/
 sql/phpmyadmin2/
+sql/phpMyAdmin2/
 sql/sql-admin/
 sql/sql/
 sql/sqladmin/
@@ -21766,8 +21789,8 @@ sqlmanager
 sqlmigrate
 sqlnet
 sqlnet.log
-sqlqhit.asp
 SQLQHit.asp
+sqlqhit.asp
 sqlweb
 sqmail
 square
@@ -22465,6 +22488,7 @@ SYSTEM
 system-admin
 system-administration
 system.log
+system/console
 system/cron/cron.txt
 system/error.txt
 system/log/
@@ -22708,6 +22732,7 @@ telefonia
 telefono
 telephone
 telepizza
+Telerik.Web.UI.DialogHandler.aspx?dp=.
 teleseminar
 television
 tell

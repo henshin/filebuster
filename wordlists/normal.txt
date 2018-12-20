@@ -44,6 +44,7 @@ ${111*111}
 .bashrc
 .bower-registry
 .bower-tmp
+.bowerrc
 .build
 .buildpath
 .builds
@@ -773,6 +774,7 @@ ${111*111}
 ;/..;/
 ;name=test/
 <>//example.com
+?sling:authRequestLogin=1
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com
@@ -885,8 +887,10 @@ _res
 _resources
 _scriptlibrary
 _scripts
+_search?pretty
 _site
 _siteadmin
+_snapshot/?pretty
 _source
 _SQL
 _sqladm
@@ -1068,7 +1072,11 @@ actualidad
 actualite
 actualites
 actuator/auditevents
+actuator/beans
+actuator/configprops
 actuator/env
+actuator/health
+actuator/info
 ad
 ad1
 ad2
@@ -1971,6 +1979,7 @@ apf4
 aphtpasswd.html
 api
 api-doc
+api/console/api_server
 api/error_log
 api2
 apibuild.pyc
@@ -1981,10 +1990,11 @@ apm
 apollo
 aponline
 app
-APP
 App
+APP
 app-admin
 app.config
+app.js
 app/.htaccess
 app/bin
 app/composer.json
@@ -2029,8 +2039,8 @@ app/vendor-src
 app_admin
 app_browser
 app_browsers
-app_code
 App_Code
+app_code
 app_data
 App_Data
 app_dev
@@ -3074,8 +3084,8 @@ capital
 caps
 captain
 captcha
-Captcha
 CAPTCHA
+Captcha
 captchas
 captions
 capture
@@ -3255,6 +3265,7 @@ cgi-bin/htimage.exe?2,2
 cgi-bin/htmlscript
 cgi-bin/imagemap.exe?2,2
 cgi-bin/login
+cgi-bin/rpc/index.pl
 cgi-bin/test.cgi
 cgi-bin2
 cgi-data
@@ -3301,8 +3312,8 @@ CHANGELOG.md
 CHANGELOG.txt
 changelog.txt
 CHANGELOG.TXT
-ChangeLog.txt
 Changelog.txt
+ChangeLog.txt
 changepassword
 changepw
 changepwd
@@ -3849,6 +3860,7 @@ console/payments/config.json
 ConsoleHelp
 constant
 constants
+constants.js
 constellation
 constitution
 construction
@@ -4095,6 +4107,7 @@ crss
 crtr
 cruise
 cruises
+crx/explorer/index.jsp;%0A.css
 crypt
 crypto
 crystal
@@ -6405,6 +6418,7 @@ hospedagem
 hospital
 hospitality
 host
+host-manager/html
 hostadmin
 hosted
 hostgator
@@ -6476,8 +6490,8 @@ html/js/misc/swfupload/swfupload.swf
 html/js/misc/swfupload/swfupload_f9.swf
 html2
 htmlarea
-HTMLDB
 htmldb
+HTMLDB
 htmledit
 htmls
 htpasswd
@@ -7002,6 +7016,7 @@ invites
 invoice
 invoices
 invoker
+invoker/EJBInvokerServlet
 invoker/JMXInvokerServlet
 io
 ioncube
@@ -7305,6 +7320,7 @@ kansas
 kansascity
 karen
 karma
+karma.conf.js
 karriere
 kart
 karten
@@ -7961,6 +7977,8 @@ mailtest
 mailto
 main
 Main
+main.jsp
+main.jsp.bak
 main.mdb
 main/login
 main2
@@ -9415,6 +9433,7 @@ passwords.html
 passwords.mdb
 passwords.sqlite
 passwords.txt
+PasswordVault
 past
 pasta
 paste
@@ -9719,10 +9738,10 @@ phpMyAdmin-2.8.1-rc1
 phpMyAdmin-2.8.2
 phpMyAdmin/scripts/setup
 phpmyadmin/scripts/setup
-phpmyadmin0
 phpMyAdmin0
-phpmyadmin1
+phpmyadmin0
 phpMyAdmin1
+phpmyadmin1
 phpmyadmin2
 phpMyAdmin2
 phpmyadmin3
@@ -9876,8 +9895,8 @@ pma
 PMA
 pma/index
 pma/scripts/setup
-pma2005
 PMA2005
+pma2005
 pma4/
 pmadmin
 pmc
@@ -10289,6 +10308,9 @@ provost
 proxies
 proxy
 proxy.pac
+proxy/smhstatus
+proxy/smhui/getaiccert
+proxy/smhui/getlogininfo
 proyectos
 prp
 prs
@@ -10968,6 +10990,7 @@ roundup
 route
 router
 routes
+routes.js
 routing
 roxio
 roxy
@@ -11235,6 +11258,7 @@ sdzxadmin
 se
 sea
 seal
+seam/resource/remoting/interface.js
 sean
 search
 Search
@@ -12318,8 +12342,8 @@ sydney
 syllabi
 syllabus
 sylvia
-Sym
 sYm
+Sym
 sym/root/home/
 symbol
 symbols
@@ -12359,6 +12383,7 @@ System
 system-admin
 system-administration
 system.log
+system/console
 system/cron/cron.txt
 system/error.txt
 system/log/
@@ -12518,6 +12543,7 @@ telecom
 telefon
 telefonia
 telephone
+Telerik.Web.UI.DialogHandler.aspx?dp=.
 television
 tell
 tell_a_friend
