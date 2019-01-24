@@ -34,6 +34,14 @@ use IO::Socket::SSL; # for SSL
 use URI::URL;
 use POSIX;
 
+
+use IO::Async::Loop;
+use Net::Async::HTTP;
+use IO::Async::Timer::Periodic;
+use IO::Async::Loop;
+my $loop = IO::Async::Loop->new;
+
+
 #Constants
 use constant DEF_MAXNUMTHREADS	=> 3;
 use constant DEF_TIMEOUT		=> 5;
@@ -406,14 +414,14 @@ $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 my %furlargs = (
 	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
 	'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
-	# this worked well but was a problem when using SOCKS
-	#'get_address' => sub {
-	#		#custom cached DNS resolution - Only 1 DNS per scan
-    #        my ($host, $port, $timeout) = @_;
-	#		#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
-	#		my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
-	#		pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
-    #    },
+	# this works but there's a problem when using SOCKS proxies
+	'get_address' => sub {
+			#custom cached DNS resolution - Only 1 DNS per scan
+            my ($host, $port, $timeout) = @_;
+			#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
+			my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
+        },
 	'timeout'   => 3,
 	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0',
 	'max_redirects' => 0,
@@ -464,6 +472,13 @@ my $path;
 my @running = ();
 my @joinable = ();
 my @threadlists=();
+my $totaldone:shared = 0;
+
+#
+
+
+threads->create(\&CountProgress);
+
 do{
 	$path = shift(@paths);
 	#only enters the if below when recursive && not the first pass
@@ -498,6 +513,7 @@ do{
 		foreach my $thr (@joinable) {
 			if ($thr->is_joinable()) {
 				$thr->join;
+				
 			}
 		}
 	}
@@ -514,6 +530,25 @@ close OUTPUT if (defined($outputfilename));
 exit 0;
 
 #################################### FUNCTIONS #########################################
+
+sub CountProgress{
+	my $current = 0;
+	my $loop = IO::Async::Loop->new();
+	my $totalcount = scalar(@allwords);
+	my $timer = IO::Async::Timer::Periodic->new(
+		interval => 1/2,
+		on_tick => sub {
+			$|++;
+				&PrintSequence("\e[K", "[ Speed: ".($totaldone - $current)." RPS / Progress: ". ceil($totaldone/$totalcount*100) ."%% ]\r");
+				$current = $totaldone;
+			$|--;
+			$loop->stop if($totaldone eq $totalcount);
+	});
+	$timer->start;
+	$loop->add( $timer );
+	$loop->run;
+}
+
 
 sub SubmitGet{
 	my($url) = @_;
@@ -582,28 +617,58 @@ sub SubmitGetList{
 
 	foreach my $url(@urllist){
 		#print $url,"\n";
-		$|++; #autoflush buffers
-		#if($reqcount % 50 == 0){ #less updates
-			if(length($url)>100){
-				&PrintQuiet("\e[K", "Scanning %.100s(...)\r",$url);
-			}else{
-				&PrintQuiet("\e[K", "Scanning %s\r",$url);
-			}
-		#}
-		$|--;
+		#my $aloop = IO::Async::Loop->new();
+		#my $http = Net::Async::HTTP->new(
+		#	max_connections_per_host => 200,
+		#	user_agent => "TurboChecker v0.1",
+		#	max_redirects => 0,
+		#	pipeline => 1,
+		#);
+		#
+		#$aloop->add( $http );
+ 
+
+		#$|++; #autoflush buffers
+		##if($reqcount % 50 == 0){ #less updates
+		#	if(length($url)>100){
+		#		&PrintQuiet("\e[K", "Scanning %.100s(...)\r",$url);
+		#	}else{
+		#		&PrintQuiet("\e[K", "Scanning %s\r",$url);
+		#	}
+		##}
+		#$|--;
 		$reqcount++;
+		{
+			#this is necessary to acurately update the progress
+			lock $semaphore;
+			$totaldone++;
+		}
 		&Log("**********************************************************\n") if $debug;
 		&Log(" >  REQUEST: $url\n") if $debug;
 		&Log("**********************************************************\n") if $debug;
 		my $numretry=0;
 		my ($minor_version, $code, $msg, $headers, $body);
 		#make threads more resilient if errors happen
+		my %headers=();
 		eval {
 			do{
+				
 				($minor_version, $code, $msg, $headers, $body) = $furl->request(
 					'method' => $method,
 					'url' => $url,
 				);
+				
+	#					my ( $response ) = $http->do_request(
+	#	   uri => URI->new( $url ),
+	#	)->get;
+	#			$code=$response->code;
+	#			$body=$response->content;
+	#			
+	#			$headers{"Content-Length"} = $response->header("Content-Length"); #->as_string);
+	#			$headers{"Content-Type"} = $response->header("Content-Type");
+				#print Dumper %headers;
+				#exit(0);
+		
 				&usleep($delay) if $delay;
 				$numretry++;
 			}while($code==500 && $numretry<=$maxretries); 
@@ -612,11 +677,11 @@ sub SubmitGetList{
 			my $e = $@;
 			chomp($e);
 			$e =~ s#(.*?) at .?/.+#$1#; #hide line details
-			&PrintSequence("\e[K");
-			&PrintColor('bold white', '[');
-			&PrintColor('bright_magenta', "ERR");
-			&PrintColor('bold white', ']');
-			printf("   %-7s  %-80s\n", "0", "$url  ($e)");
+			#&PrintSequence("\e[K");
+			#&PrintColor('bold white', '[');
+			#&PrintColor('bright_magenta', "ERR");
+			#&PrintColor('bold white', ']');
+			#printf("   %-7s  %-80s\n", "0", "$url  ($e)");
 			next;
 		};
 		my %ret = (
@@ -628,7 +693,7 @@ sub SubmitGetList{
 		);
 	
 		#convert the headers array to hash
-		my %headers = @{$ret{"headers"}};
+		#my %headers = @{$ret{"headers"}};
 		#update length if it comes in the header
 		#if ($headers{"content-length"}){
 		#	$ret{"length"}=$headers{"content-length"};
