@@ -42,7 +42,7 @@ Then you will be able to use it system wide
 ### Syntax
 On the most basic form, Filebuster can be run just using the following syntax:
 ```
-# filebuster -u http://yoursite.com/ 
+# filebuster -u http://yoursite/ 
 ```
 If you want to fuzz the final part of the URL, then you don't need to using the tag **{fuzz}**  to indicate where to inject. 
 
@@ -50,7 +50,7 @@ The wordlist parameter (`-w`) is not mandatory as from version 0.9.1. If not spe
 
 A more complex example: 
 ```
-# filebuster -u http://yoursite.com/{fuzz}.jsp -w /path/to/wordlist.txt -t 3 -x http://127.0.0.1:8080 --hs "Error"
+# filebuster -u http://yoursite/{fuzz}.jsp -w /path/to/wordlist.txt -t 3 -x http://127.0.0.1:8080 --hs "Error"
 ```
 This would allow you to fuzz a website with 3 threads to find JSP pages, using a local proxy and hiding all responses with "Error" in the body.
 
@@ -59,6 +59,33 @@ For the complete syntax help with examples, just run `filebuster.pl --help`.
 ### Wordlists
 I've created some wordlists based on different sources around the web together with my own custom payloads that I've came across during my pentests and research. You can find them on the `wordlists` directory.
 If you need more wordlists, you should check out the great [SecLists](https://github.com/danielmiessler/SecLists/) repository.
+
+### Running in docker
+
+You'll need to start by building the container:
+```
+# docker build -t filebuster .
+```
+
+Afterwards you can run it like this:
+```
+# docker run -ti --rm filebuster -u http://yoursite/{fuzz}.jsp
+```
+
+If you need to use custom wordlists, remember to map the file, e.g.:
+```
+# docker run -ti --rm -v /path/to/wordlist.txt:/filebuster/mywordlist.txt filebuster -u http://yoursite/{fuzz}.jsp -w /filebuster/mywordlist.txt
+```
+
+You can create an alias in your shell, and make it (almost) seamless:
+```
+# alias filebuster="docker run -ti --rm filebuster"
+```
+
+You can now just run it:
+```
+# filebuster -u http://yoursite/
+```
 
 ### Contribute
 I love Filebuster and I hope you do to. If you have any issues or suggestions feel free to get in touch. 
