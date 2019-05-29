@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # install dependencies:
-# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU
+# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop
 # -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
@@ -33,13 +33,9 @@ use IO::Socket::SSL; # for SSL
 #use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
 use URI::URL;
 use POSIX;
-
-
-use IO::Async::Loop;
-use Net::Async::HTTP;
 use IO::Async::Timer::Periodic;
 use IO::Async::Loop;
-my $loop = IO::Async::Loop->new;
+
 
 
 #Constants
@@ -65,7 +61,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.9.4 
+      \/                 \/       \/           \/            \/    v0.9.5 
                                        HTTP fuzzer by Henshin (@henshinpt)
  
 EOF
@@ -435,13 +431,15 @@ print "[*] Testing connection to the website host '$host' ...\n";
 my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
 if($ret{"httpcode"} == 500){
-	print "WAF bypass didn't work. Retrying with fallback ciphers\n";
-	%sslopts = (
-		'SSL_verify_mode' => SSL_VERIFY_NONE(),
-		'SSL_cipher_list' => ".", 
-		'SSL_honor_cipher_order' => 1,
-	);
-	%ret = &SubmitGet($sessionpayload);
+	if(lc($scheme) eq "https"){
+		print "[-] WAF bypass didn't work. Retrying with fallback ciphers\n";
+		%sslopts = (
+			'SSL_verify_mode' => SSL_VERIFY_NONE(),
+			'SSL_cipher_list' => ".", 
+			'SSL_honor_cipher_order' => 1,
+		);
+		%ret = &SubmitGet($sessionpayload);
+	}
 	if($ret{"httpcode"} == 500){
 		if(!$force){
 			print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
@@ -459,10 +457,6 @@ if($ret{"httpcode"} == 500){
 			print "[!] Results with code 500 will be filtered from output automatically\n";
 		}
 	}
-	else
-	{
-		print "Site doesn't support Eliptic Curve. WAF might filter our payloads\n";
-	}
 }
 print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
 print "[CODE] [LENGTH] [URL]\n";
@@ -474,10 +468,8 @@ my @joinable = ();
 my @threadlists=();
 my $totaldone:shared = 0;
 
-#
 
-
-threads->create(\&CountProgress);
+threads->create(\&CountProgress) unless $quiet;
 
 do{
 	$path = shift(@paths);
@@ -539,8 +531,8 @@ sub CountProgress{
 		interval => 1/2,
 		on_tick => sub {
 			$|++;
-				&PrintSequence("\e[K", "[ Speed: ".($totaldone - $current)." RPS / Progress: ". ceil($totaldone/$totalcount*100) ."%% ]\r");
-				$current = $totaldone;
+			&PrintSequence("\e[K", "[ Speed: ".($totaldone - $current)." RPS / Progress: ". ceil($totaldone/$totalcount*100) ."%% ]\r");
+			$current = $totaldone;
 			$|--;
 			$loop->stop if($totaldone eq $totalcount);
 	});
@@ -614,29 +606,7 @@ sub SubmitGetList{
 	#this will be used to analyze previous requests and make actions according to certain responses
 	my @respqueue;
 	my $respqueuesize = 3;
-
 	foreach my $url(@urllist){
-		#print $url,"\n";
-		#my $aloop = IO::Async::Loop->new();
-		#my $http = Net::Async::HTTP->new(
-		#	max_connections_per_host => 200,
-		#	user_agent => "TurboChecker v0.1",
-		#	max_redirects => 0,
-		#	pipeline => 1,
-		#);
-		#
-		#$aloop->add( $http );
- 
-
-		#$|++; #autoflush buffers
-		##if($reqcount % 50 == 0){ #less updates
-		#	if(length($url)>100){
-		#		&PrintQuiet("\e[K", "Scanning %.100s(...)\r",$url);
-		#	}else{
-		#		&PrintQuiet("\e[K", "Scanning %s\r",$url);
-		#	}
-		##}
-		#$|--;
 		$reqcount++;
 		{
 			#this is necessary to acurately update the progress
@@ -648,8 +618,9 @@ sub SubmitGetList{
 		&Log("**********************************************************\n") if $debug;
 		my $numretry=0;
 		my ($minor_version, $code, $msg, $headers, $body);
+		
+		
 		#make threads more resilient if errors happen
-		my %headers=();
 		eval {
 			do{
 				
@@ -658,17 +629,6 @@ sub SubmitGetList{
 					'url' => $url,
 				);
 				
-	#					my ( $response ) = $http->do_request(
-	#	   uri => URI->new( $url ),
-	#	)->get;
-	#			$code=$response->code;
-	#			$body=$response->content;
-	#			
-	#			$headers{"Content-Length"} = $response->header("Content-Length"); #->as_string);
-	#			$headers{"Content-Type"} = $response->header("Content-Type");
-				#print Dumper %headers;
-				#exit(0);
-		
 				&usleep($delay) if $delay;
 				$numretry++;
 			}while($code==500 && $numretry<=$maxretries); 
@@ -677,11 +637,11 @@ sub SubmitGetList{
 			my $e = $@;
 			chomp($e);
 			$e =~ s#(.*?) at .?/.+#$1#; #hide line details
-			#&PrintSequence("\e[K");
-			#&PrintColor('bold white', '[');
-			#&PrintColor('bright_magenta', "ERR");
-			#&PrintColor('bold white', ']');
-			#printf("   %-7s  %-80s\n", "0", "$url  ($e)");
+			&PrintSequence("\e[K");
+			&PrintColor('bold white', '[');
+			&PrintColor('bright_magenta', "ERR");
+			&PrintColor('bold white', ']');
+			printf("   %-7s  %-80s\n", "0", "$url  ($e)");
 			next;
 		};
 		my %ret = (
@@ -693,15 +653,14 @@ sub SubmitGetList{
 		);
 	
 		#convert the headers array to hash
-		#my %headers = @{$ret{"headers"}};
+		my %headers = @{$ret{"headers"}};
 		#update length if it comes in the header
 		#if ($headers{"content-length"}){
 		#	$ret{"length"}=$headers{"content-length"};
 		#}
 		&Log("HTTP/1.1 $code $msg\n") if $debug;
 		my $isqueued = undef;
-		#no need to iterate & parse headers
-		#while (my($key, $value) = each(%headers)){
+		
 		if(exists($headers{"location"})){
 			#simple directory recursion detection
 			my $value = $headers{"location"};
