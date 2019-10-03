@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # install dependencies:
-# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL
+# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop
 # -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
 
 #TODO: 
@@ -25,10 +25,17 @@ use Time::HiRes qw(usleep);
 use Benchmark;
 use Net::DNS::Lite qw(inet_aton);
 use Furl;
+use Net::DNS;
+use Cache::LRU;
+#use IO::Socket;
 use Socket;
 use IO::Socket::SSL; # for SSL
 use URI::URL;
 use POSIX;
+use IO::Async::Timer::Periodic;
+use IO::Async::Loop;
+
+
 
 #Constants
 use constant DEF_MAXNUMTHREADS	=> 3;
@@ -43,9 +50,7 @@ my $program;
 my $fullpath = (defined(readlink($0))) ? readlink($0) : $0;
 my ($filename, $dir, $suffix) = fileparse($fullpath);
 #$dir will contain the directory of the filebuster script. We can use this to deduct the wordlist directory.
-#print "Filename $filename\tdirs: $dir\t wordlist dir: $dir/wordlists/normal.txt \n";
-
-my $defaultwordlist = "$dir/wordlists/normal.txt";
+my $defaultwordlist = "$dir/wordlists/fast.txt";
 
 print <<'EOF';
  ___________.__.__        __________                __                
@@ -53,9 +58,8 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.9.2 
-                                                   HTTP fuzzer by Henshin 
- 
+      \/                 \/       \/           \/            \/    v0.9.5 
+                                       HTTP fuzzer by Henshin (@henshinpt)
 EOF
 
 my $url;
@@ -125,21 +129,23 @@ if($help){
     Arguments:
         -u <url>:               Specifies the URL to analyze. Use the tag {fuzz} to indicate the location 
                                 where you want to inject the payloads. If ommited, it will be appended to the
-                                specified URL automatically
+                                end of specified URL automatically
+                                Example: http://www.website.com/files/test{fuzz}.php
         -w <path>:              Specifies the path to the wordlist(s). This can be either the path to a 
-                                single file or a path with shell 
-                                wildcards for multiple files. Example: /home/user/*.txt
+                                single file or multiple files using wildcards. Example: /home/user/*.txt. 
+                                If not specified, it will attempt to locate and load the fast.txt wordlist 
+                                automatically
         -p <pattern>:           Regex style pattern to filter specific words from the selected wordlists. 
                                 If you use special regex characters like the pipe (|) remember to enclose 
                                 the parameter in quotes. Example: '^(sha|res)'
         -t <num>:               Maximum number of threads to use. If you use more than 3 threads, you'll 
-                                probably start flooding the web server with traffic. 2 threads
+                                probably start flooding the web server with traffic. 3 threads
                                 should provide a very fast request rate without not many errors. 
-                                Default: 2 threads
+                                Default: 3 threads
         -f:                     Force FileBuster to proceed with the attack even if the initial request 
                                 returns error code 500
         -e:                     Try additional file extensions. This will be appended after the {fuzz} payload.
-                                You can specify multiple extensions separeted by comma. Example: .xml,.html
+                                You can specify multiple extensions separeted by comma. Example: xml,html
         -E:                     New-line separated file of extensions to be appended.
         -r:                     Use recursive scans. This is only possible if your {fuzz} keywork is at the end 
                                 of your URL. Recursive scans respect the -p (pattern) filter if specified
@@ -193,7 +199,6 @@ $quiet = 1 unless $stdoutisatty;
 #for queued printing
 my $semaphore :shared;
 
-use Cache::LRU;
 #DNS Cache
 $Net::DNS::Lite::CACHE = Cache::LRU->new(
 	size => 3,
@@ -323,6 +328,7 @@ if(scalar @wordlistfiles == 1){
 &LogPrint("[+] Timeout period set to $timeout seconds\n") if ($timeout != DEF_TIMEOUT);
 &LogPrint("[+] Maximum number of retries set to $maxretries\n") if ($maxretries != DEF_NUMRETRIES);
 &LogPrint("[+] URL encoding disabled\n") if ($nourlencoding);
+&LogPrint("[+] Using $method HTTP method\n") if ($method ne DEF_HTTPMETHOD);
 &LogPrint("[+] Indexing words...\n");
 $|++; #autoflush buffers
 
@@ -391,24 +397,26 @@ if($customheaders){
 my @httpheaders = %httpheaders; #because we need an ARRAY ref in FURL
 
 my %sslopts = (
-	'SSL_verify_mode' => SSL_VERIFY_NONE()
+	'SSL_verify_mode' => SSL_VERIFY_NONE(),
+	'SSL_cipher_list' => "ECDHE-RSA-AES128-SHA256,ECDHE-RSA-AES256-SHA384,ECDHE-RSA-AES128-GCM-SHA256,ECDHE-RSA-AES256-GCM-SHA384,ECDHE-ECDSA-AES128-SHA256,ECDHE-ECDSA-AES256-SHA384,ECDHE-ECDSA-AES128-GCM-SHA256,ECDHE-ECDSA-AES256-GCM-SHA384", #WAF Bypass based on 0x09AL research (https://0x09al.github.io/waf/bypass/ssl/2018/07/02/web-application-firewall-bypass.html)
+	'SSL_honor_cipher_order' => 0,
 );
 
 $sslopts{"SSL_version"} = $sslversion if ($sslversion);
 
 my %furlargs = (
 	#'inet_aton' => \&Net::DNS::Lite::inet_aton,
-	#'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
-	# this worked well but was a problem when using SOCKS
-	#'get_address' => sub {
-	#		#custom cached DNS resolution - Only 1 DNS per scan
-    #        my ($host, $port, $timeout) = @_;
-	#		#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
-	#		my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
-	#		pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
-    #    },
+	'inet_aton' => sub { Net::DNS::Lite::inet_aton(@_) },
+	# this works but there's a problem when using SOCKS proxies
+	'get_address' => sub {
+			#custom cached DNS resolution - Only 1 DNS per scan
+            my ($host, $port, $timeout) = @_;
+			#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
+			my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
+        },
 	'timeout'   => 3,
-	'agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
+	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
@@ -420,25 +428,34 @@ print "[*] Testing connection to the website host '$host' ...\n";
 my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
 if($ret{"httpcode"} == 500){
-	if(!$force){
-		print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
-		if($ret{"msg"}){
-			print "[!] Details: " . $ret{"msg"} . "\n" if $ret{"msg"};
-			if($ret{"msg"} =~ /sslv3/i){
-				print "[*] Note: It seems that the error is related to SSLv3. A possible workaround is to try to use the '--sslversion SSLv3' flag to force filebuster to use that version.\n";
-			}
-		}
-		print "[!] Note: If this was expected, you can use the flag -f (Force) to force FileBuster to continue anyway.\n";
-		print "\n";
-		exit -1;
-	}else{
-		print "[!] Website returned error 500. Since the parameter -f (Force) was specified, FileBuster will continue anyway...\n";
-		print "[!] Results with code 500 will be filtered from output automatically\n";
+	if(lc($scheme) eq "https"){
+		print "[-] WAF bypass didn't work. Retrying with fallback ciphers\n";
+		%sslopts = (
+			'SSL_verify_mode' => SSL_VERIFY_NONE(),
+			'SSL_cipher_list' => ".", 
+			'SSL_honor_cipher_order' => 1,
+		);
+		%ret = &SubmitGet($sessionpayload);
 	}
-
-}else{
-	print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
+	if($ret{"httpcode"} == 500){
+		if(!$force){
+			print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
+			if($ret{"msg"}){
+				print "[!] Details: " . $ret{"msg"} . "\n" if $ret{"msg"};
+				if($ret{"msg"} =~ /sslv3/i){
+					print "[*] Note: It seems that the error is related to SSLv3. A possible workaround is to try to use the '--sslversion SSLv3' flag to force filebuster to use that version.\n";
+				}
+			}
+			print "[!] Note: If this was expected, you can use the flag -f (Force) to force FileBuster to continue anyway.\n";
+			print "\n";
+			exit -1;
+		}else{
+			print "[!] Website returned error 500. Since the parameter -f (Force) was specified, FileBuster will continue anyway...\n";
+			print "[!] Results with code 500 will be filtered from output automatically\n";
+		}
+	}
 }
+print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
 print "[CODE] [LENGTH] [URL]\n";
 
 my @paths:shared=();
@@ -446,6 +463,11 @@ my $path;
 my @running = ();
 my @joinable = ();
 my @threadlists=();
+my $totaldone:shared = 0;
+
+
+threads->create(\&CountProgress) unless $quiet;
+
 do{
 	$path = shift(@paths);
 	#only enters the if below when recursive && not the first pass
@@ -480,6 +502,7 @@ do{
 		foreach my $thr (@joinable) {
 			if ($thr->is_joinable()) {
 				$thr->join;
+				
 			}
 		}
 	}
@@ -496,6 +519,25 @@ close OUTPUT if (defined($outputfilename));
 exit 0;
 
 #################################### FUNCTIONS #########################################
+
+sub CountProgress{
+	my $current = 0;
+	my $loop = IO::Async::Loop->new();
+	my $totalcount = scalar(@allwords);
+	my $timer = IO::Async::Timer::Periodic->new(
+		interval => 1/2,
+		on_tick => sub {
+			$|++;
+			&PrintSequence("\e[K", "[ Speed: ".($totaldone - $current)." RPS / Progress: ". ceil($totaldone/$totalcount*100) ."%% ]\r");
+			$current = $totaldone;
+			$|--;
+			$loop->stop if($totaldone eq $totalcount);
+	});
+	$timer->start;
+	$loop->add( $timer );
+	$loop->run;
+}
+
 
 sub SubmitGet{
 	my($url) = @_;
@@ -561,31 +603,29 @@ sub SubmitGetList{
 	#this will be used to analyze previous requests and make actions according to certain responses
 	my @respqueue;
 	my $respqueuesize = 3;
-
 	foreach my $url(@urllist){
-		#print $url,"\n";
-		$|++; #autoflush buffers
-		#if($reqcount % 50 == 0){ #less updates
-			if(length($url)>100){
-				&PrintQuiet("\e[K", "Scanning %.100s(...)\r",$url);
-			}else{
-				&PrintQuiet("\e[K", "Scanning %s\r",$url);
-			}
-		#}
-		$|--;
 		$reqcount++;
+		{
+			#this is necessary to acurately update the progress
+			lock $semaphore;
+			$totaldone++;
+		}
 		&Log("**********************************************************\n") if $debug;
 		&Log(" >  REQUEST: $url\n") if $debug;
 		&Log("**********************************************************\n") if $debug;
 		my $numretry=0;
 		my ($minor_version, $code, $msg, $headers, $body);
+		
+		
 		#make threads more resilient if errors happen
 		eval {
 			do{
+				
 				($minor_version, $code, $msg, $headers, $body) = $furl->request(
-					'method' => "GET",
+					'method' => $method,
 					'url' => $url,
 				);
+				
 				&usleep($delay) if $delay;
 				$numretry++;
 			}while($code==500 && $numretry<=$maxretries); 
@@ -617,8 +657,7 @@ sub SubmitGetList{
 		#}
 		&Log("HTTP/1.1 $code $msg\n") if $debug;
 		my $isqueued = undef;
-		#no need to iterate & parse headers
-		#while (my($key, $value) = each(%headers)){
+		
 		if(exists($headers{"location"})){
 			#simple directory recursion detection
 			my $value = $headers{"location"};
@@ -635,7 +674,7 @@ sub SubmitGetList{
 		}
 		&Log("\n$body\n\n") if $debug;
 		#filter the common error responses without details
-		next if (($ret{"length"} == 0) || ($ret{"length"} == 226) && $ret{"httpcode"} == 400); #Apache
+		next if ((($ret{"length"} == 0) || ($ret{"length"} == 226)) && $ret{"httpcode"} == 400); #Apache
 		next if ($ret{"length"} =~ /18\d/ && $ret{"httpcode"} == 400); #Nginx on Ubuntu but should cover other OSs too
 		
 		next if (defined $hidestringheaders && grep(/$hidestringheaders/i, @{$ret{"headers"}})>0);
@@ -671,7 +710,7 @@ sub SubmitGetList{
 			if($ret{"httpcode"} == 500){
 				my $errmsg = $ret{"msg"};
 				$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
-				#chomp($errmsg) #needs testing
+				chomp($errmsg); 
 				$url .= " :: $errmsg";
 			}
 			my $str = sprintf("   %-7s  %-80s ", $ret{"length"}, $url);
@@ -723,7 +762,7 @@ sub ReadFile{
 	}
 	chomp($extensions);	
 	my @exts = split(/,/,$extensions);
-	@exts = map{".".$_ } @exts;
+	@exts = map { ".".$_ } @exts;
 	unshift @exts, ""; # add a dummy null extension
 
 	while( my $line = <FILE>){
