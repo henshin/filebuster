@@ -29,7 +29,8 @@ Perl version **5.10** or higher is required
 
 Filebuster resources a lot of features to third party libraries. However they can be easily installed with the following command:
 ```
-# cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL
+# cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO
+::Async::Loop
 ```
 The `-T` option will make the installation much quicker but if you run into problems, remove it to allow CPAN to perform the tests per package.
 ### Installation
@@ -69,17 +70,17 @@ You'll need to start by building the container:
 
 Afterwards you can run it like this:
 ```
-# docker run -ti --rm filebuster -u http://yoursite/{fuzz}.jsp
+# docker run -ti --init --rm filebuster -u http://yoursite/
 ```
 
 If you need to use custom wordlists, remember to map the file, e.g.:
 ```
-# docker run -ti --rm -v /path/to/wordlist.txt:/filebuster/mywordlist.txt filebuster -u http://yoursite/{fuzz}.jsp -w /filebuster/mywordlist.txt
+# docker run -ti --init --rm -v /path/to/wordlist.txt:/filebuster/mywordlist.txt filebuster -u http://yoursite/ -w /filebuster/mywordlist.txt
 ```
 
 You can create an alias in your shell, and make it (almost) seamless:
 ```
-# alias filebuster="docker run -ti --rm filebuster"
+# alias filebuster="docker run -ti --init --rm filebuster"
 ```
 
 You can now just run it:
