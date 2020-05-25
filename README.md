@@ -29,8 +29,7 @@ Perl version **5.10** or higher is required
 
 Filebuster resources a lot of features to third party libraries. However they can be easily installed with the following command:
 ```
-# cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO
-::Async::Loop
+# cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop Net::DNS
 ```
 The `-T` option will make the installation much quicker but if you run into problems, remove it to allow CPAN to perform the tests per package.
 ### Installation
