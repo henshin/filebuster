@@ -29,7 +29,7 @@ Perl version **5.10** or higher is required
 
 Filebuster resources a lot of features to third party libraries. However they can be easily installed with the following command:
 ```
-# cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop Net::DNS
+# cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop
 ```
 The `-T` option will make the installation much quicker but if you run into problems, remove it to allow CPAN to perform the tests per package.
 ### Installation
@@ -46,7 +46,7 @@ On the most basic form, Filebuster can be run just using the following syntax:
 ```
 If you want to fuzz the final part of the URL, then you don't need to using the tag **{fuzz}**  to indicate where to inject. 
 
-The wordlist parameter (`-w`) is not mandatory as from version 0.9.1. If not specified, Filebuster will attempt to find and load the "Normal" wordlist automatically. 
+The wordlist parameter (`-w`) is not mandatory as from version 0.9.1. If not specified, Filebuster will attempt to find and load the "Fast" wordlist automatically. 
 
 A more complex example: 
 ```

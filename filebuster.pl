@@ -1,13 +1,4 @@
 #!/usr/bin/perl
-# install dependencies:
-# > cpan -T install YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop
-# -T skips all the tests which makes the install process very quick. Don't use this option if you encounter problems in the installation.
-
-#TODO: 
-#   - DNS over SOCKS is not currently working 
-#   - when the initial request returns 302, quit and warn the user or perform follow redirects on every request
-#   - create a seperate file with the list of ignored directories when using recursive search
-#   - when limiting the line size, it would be a nice feature to read the columns from "stty size" command and adjust the number of chars accordingly
 
 use strict;
 use warnings;
@@ -25,16 +16,13 @@ use Time::HiRes qw(usleep);
 use Benchmark;
 use Net::DNS::Lite qw(inet_aton);
 use Furl;
-use Net::DNS;
 use Cache::LRU;
-#use IO::Socket;
 use Socket;
 use IO::Socket::SSL; # for SSL
 use URI::URL;
 use POSIX;
 use IO::Async::Timer::Periodic;
 use IO::Async::Loop;
-
 
 
 #Constants
@@ -58,7 +46,7 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.9.5 
+      \/                 \/       \/           \/            \/    v0.9.6 
                                        HTTP fuzzer by Henshin (@henshinpt)
 EOF
 
@@ -398,7 +386,9 @@ my @httpheaders = %httpheaders; #because we need an ARRAY ref in FURL
 
 my %sslopts = (
 	'SSL_verify_mode' => SSL_VERIFY_NONE(),
-	'SSL_cipher_list' => "ECDHE-RSA-AES128-SHA256,ECDHE-RSA-AES256-SHA384,ECDHE-RSA-AES128-GCM-SHA256,ECDHE-RSA-AES256-GCM-SHA384,ECDHE-ECDSA-AES128-SHA256,ECDHE-ECDSA-AES256-SHA384,ECDHE-ECDSA-AES128-GCM-SHA256,ECDHE-ECDSA-AES256-GCM-SHA384", #WAF Bypass based on 0x09AL research (https://0x09al.github.io/waf/bypass/ssl/2018/07/02/web-application-firewall-bypass.html)
+	#WAF Bypass based on 0x09AL research (https://0x09al.github.io/waf/bypass/ssl/2018/07/02/web-application-firewall-bypass.html)
+	#This config also adds all TLSv1.3 ciphers as well but all those comply to the PFS
+	'SSL_cipher_list' => 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256',
 	'SSL_honor_cipher_order' => 0,
 );
 
@@ -416,7 +406,7 @@ my %furlargs = (
 			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
         },
 	'timeout'   => 3,
-	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0',
+	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
@@ -432,7 +422,7 @@ if($ret{"httpcode"} == 500){
 		print "[-] WAF bypass didn't work. Retrying with fallback ciphers\n";
 		%sslopts = (
 			'SSL_verify_mode' => SSL_VERIFY_NONE(),
-			'SSL_cipher_list' => ".", 
+			'SSL_cipher_list' => "", 
 			'SSL_honor_cipher_order' => 1,
 		);
 		%ret = &SubmitGet($sessionpayload);
