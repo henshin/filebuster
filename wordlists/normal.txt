@@ -12,7 +12,10 @@ ${111*111}
 %2f%2fexample.com
 %2f%5c%2f%67%6f%6f%67%6c%65%2e%63%6f%6d/
 %2F../../../
+<<<<<<< HEAD
+=======
 %3f/
+>>>>>>> dev
 %5cexample.com
 %68%74%74%70%3a%2f%2f%67%6f%6f%67%6c%65%2e%63%6f%6d
 %e2%80%aesutats-revres
@@ -98,6 +101,9 @@ ${111*111}
 .emacs.desktop.lock
 .empty-folder
 .env
+<<<<<<< HEAD
+.example.com
+=======
 .env.sample
 .environment
 .error_log
@@ -107,6 +113,7 @@ ${111*111}
 .example.com
 .external/data
 .externalToolBuilders
+>>>>>>> dev
 .FBCIndex
 .fhp
 .filemgr-tmp
@@ -774,7 +781,10 @@ ${111*111}
 ;/..;/
 ;name=test/
 <>//example.com
+<<<<<<< HEAD
+=======
 ?sling:authRequestLogin=1
+>>>>>>> dev
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com
@@ -2210,10 +2220,14 @@ assetmanage
 assetmanagement
 assetmanager
 assets
+<<<<<<< HEAD
+assets/file:%2f%2f/
+=======
 assets/fckeditor
 assets/file:%2f%2f/
 assets/js/fckeditor
 assets/npm-debug.log
+>>>>>>> dev
 assignment
 assignments
 assist
@@ -3311,9 +3325,14 @@ changelog
 CHANGELOG.md
 CHANGELOG.txt
 changelog.txt
+<<<<<<< HEAD
+CHANGELOG.txt
+CHANGELOG.TXT
+=======
 CHANGELOG.TXT
 Changelog.txt
 ChangeLog.txt
+>>>>>>> dev
 changepassword
 changepw
 changepwd
@@ -3714,7 +3733,10 @@ competition
 competitions
 compile
 compiled
+<<<<<<< HEAD
+=======
 compiler
+>>>>>>> dev
 compilerconfig.json
 complaint
 complaints
@@ -11968,6 +11990,11 @@ sqlmanager
 sqlmigrate
 sqlnet
 sqlnet.log
+<<<<<<< HEAD
+sqlqhit.asp
+SQLQHit.asp
+=======
+>>>>>>> dev
 sqlweb
 squelettes
 squelettes-dist
@@ -14041,8 +14068,13 @@ wrapper
 wrestling
 wright
 write
+<<<<<<< HEAD
+Writer
+writer
+=======
 writer
 writereview
+>>>>>>> dev
 writers
 writing
 writings

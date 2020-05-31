@@ -1434,7 +1434,10 @@ ${111*111}
 ;/..;/
 ;name=test/
 <>//example.com
+<<<<<<< HEAD
+=======
 ?sling:authRequestLogin=1
+>>>>>>> dev
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com
@@ -2329,8 +2332,13 @@ adm.jsp
 Adm.jsp
 adm.pl
 Adm.pl
+<<<<<<< HEAD
+Adm.py
+adm.py
+=======
 adm.py
 Adm.py
+>>>>>>> dev
 adm.rb
 Adm.rb
 adm.shtml
@@ -2903,11 +2911,15 @@ administrativo
 administrator
 Administrator
 administrator-login/
+<<<<<<< HEAD
+=======
 administrator.asp
 administrator.aspx
 administrator.cfm
 Administrator.htm
+>>>>>>> dev
 administrator.htm
+Administrator.htm
 administrator.html
 Administrator.html
 administrator.jsp
@@ -6042,10 +6054,17 @@ changelog.html
 CHANGELOG.log
 CHANGELOG.LOG
 CHANGELOG.md
+<<<<<<< HEAD
+changelog.txt
+CHANGELOG.TXT
+CHANGELOG.txt
+ChangeLog.txt
+=======
 changelog.md
 CHANGELOG.txt
 changelog.txt
 CHANGELOG.TXT
+>>>>>>> dev
 Changelog.txt
 ChangeLog.txt
 changelogs
@@ -6768,6 +6787,10 @@ competitions
 compile
 compiled
 compiler
+<<<<<<< HEAD
+compiler.assign
+=======
+>>>>>>> dev
 compilerconfig.json
 complain
 complaint
@@ -7765,10 +7788,10 @@ db/dbweb/
 db/main.mdb
 db/myadmin/
 db/phpMyAdmin-2/
-db/phpMyAdmin/
 db/phpmyadmin/
-db/phpMyAdmin2/
+db/phpMyAdmin/
 db/phpmyadmin2/
+db/phpMyAdmin2/
 db/webadmin/
 db/webdb/
 db/websql/
@@ -7959,9 +7982,12 @@ deluge
 dem
 demand
 demo
-Demo
 DEMO
+<<<<<<< HEAD
+Demo
+=======
 demo-business
+>>>>>>> dev
 demo/ejb/index.html
 demo/sql/index.jsp
 demo1
@@ -8228,6 +8254,12 @@ disease
 diseno
 dish
 disk
+<<<<<<< HEAD
+Disk1
+disk1
+DISK1
+=======
+>>>>>>> dev
 diskuse
 diskussion
 diskuze
@@ -9556,9 +9588,13 @@ exams
 exc
 excalibur
 excel
+<<<<<<< HEAD
+=======
 Excel
 Exception
+>>>>>>> dev
 exception
+Exception
 exception_log
 exceptions
 excerpt
@@ -10050,10 +10086,15 @@ firewalls
 fireworks
 firm
 firma
+<<<<<<< HEAD
+FirmConnect
+firmconnect
+=======
 firmas
 FirmConnect
 firmconnect
 firmen
+>>>>>>> dev
 firms
 firmware
 firmy
@@ -11373,7 +11414,10 @@ happen
 happening
 happy
 happyaxis.jsp
+<<<<<<< HEAD
+=======
 happyholidays
+>>>>>>> dev
 hard
 hardcore
 hardlink
@@ -11567,7 +11611,10 @@ historic
 historical
 history
 HISTORY
+<<<<<<< HEAD
+=======
 History
+>>>>>>> dev
 HISTORY.md
 history.md
 history.txt
@@ -11842,6 +11889,10 @@ html_templates
 htmlarea
 htmldb
 HTMLDB
+<<<<<<< HEAD
+HTMLDefinition
+=======
+>>>>>>> dev
 htmledit
 htmleditor
 htmlemail
@@ -11862,6 +11913,10 @@ htsrv
 hTTgS.mdb
 http
 HTTP
+<<<<<<< HEAD
+Http
+=======
+>>>>>>> dev
 http://%67%6f%6f%67%6c%65%2e%63%6f%6d
 http://example.com
 http://example.com/%2e%2e
@@ -11908,8 +11963,11 @@ https://example.com/%2f%2e%2e
 https://example.com/%2f..
 https://example.com//
 https:example.com
+<<<<<<< HEAD
+=======
 httpsdocs
 httpuser
+>>>>>>> dev
 hu
 hu_HU
 hub
@@ -12648,8 +12706,8 @@ install.aspx
 install.bak
 install.htm
 INSTALL.htm
-install.html
 INSTALL.html
+install.html
 install.inc
 install.log
 INSTALL.md
@@ -13530,9 +13588,13 @@ kontaktlinsen
 kontakty
 konto
 konto-eroeffnen
+<<<<<<< HEAD
+=======
 kontrol
 konzerte
+>>>>>>> dev
 kor
+KOR
 korea
 korean
 korisnik
@@ -14194,9 +14256,12 @@ log
 Log
 LOG
 log-in
-Log-In/
 Log-in/
+<<<<<<< HEAD
+Log-In/
+=======
 log-viewer
+>>>>>>> dev
 log.htm
 log.html
 log.mdb
@@ -14486,8 +14551,8 @@ m6_pay
 m7
 m8
 m9
-M_images
 m_images
+M_images
 ma
 ma-fr
 mab.nsf
@@ -15034,8 +15099,8 @@ members.htm
 Members.htm
 members.html
 Members.html
-members.jsp
 Members.jsp
+members.jsp
 members.log
 members.mdb
 members.pl
@@ -16304,6 +16369,11 @@ nicom1
 nieuw
 nieuws
 nieuwsbrief
+<<<<<<< HEAD
+NIF
+nif
+=======
+>>>>>>> dev
 nifty
 niger
 nigeria
@@ -17307,10 +17377,17 @@ password.sqlite
 password.txt
 Password.txt
 passWord.txt
+<<<<<<< HEAD
+password_reset
+Passwordlist.txt
+passwordlist.txt
+passwordList.txt
+=======
 password_resets
 passwordList.txt
 Passwordlist.txt
 passwordlist.txt
+>>>>>>> dev
 passwordlist/
 passwordlists/
 passwordrecovery
@@ -17724,16 +17801,25 @@ phpinclude
 phpincludes
 phpinfo
 phpInfo
+<<<<<<< HEAD
+=======
 PhpInfo
 PHPINFO
+>>>>>>> dev
 PHPinfo
+PhpInfo
 phpinfo.php3
 phpinfo.php4
 phpinfo.php5
 phpinfos
 phpini.bak
+<<<<<<< HEAD
+phpInputFilter
+phpinputfilter
+=======
 phpjobscheduler
 phpld
+>>>>>>> dev
 phpldapadmin
 phplib
 phplist
@@ -17869,12 +17955,23 @@ phpMyAdmin-3.3.4/
 phpMyAdmin-3/
 phpMyAdmin-4/
 phpmyadmin-old
+<<<<<<< HEAD
+phpmyAdmin/
+phpMyadmin/
+phpMyAdmin/scripts/setup
+phpmyadmin/scripts/setup
+phpmyadmin0/
+phpMyAdmin0/
+phpMyAdmin1/
+phpmyadmin1/
+=======
 phpmyadmin/scripts/setup
 phpMyAdmin/scripts/setup
 phpmyadmin0
 phpMyAdmin0
 phpmyadmin1
 phpMyAdmin1
+>>>>>>> dev
 phpmyadmin2
 phpMyAdmin2
 phpmyadmin3
@@ -18123,11 +18220,17 @@ pma
 PMA
 pma/index
 pma/scripts/setup
+<<<<<<< HEAD
+pma2005/
+PMA2005/
+=======
 pma2
 PMA2005
 pma2005
 PMA2009/
+>>>>>>> dev
 pma2009/
+PMA2009/
 pma4/
 pmadmin
 pmb
@@ -19269,6 +19372,10 @@ README.md
 readme.md
 readme.txt
 README.txt
+<<<<<<< HEAD
+README.TXT
+=======
+>>>>>>> dev
 Readme.txt
 README_VELOCE
 readmore
@@ -19388,15 +19495,21 @@ redhat
 redir
 redireccion
 redirect
+<<<<<<< HEAD
+=======
 redirect-to
 redirect2
+>>>>>>> dev
 redirect?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 redirect?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 redirect?url=/\/example.com&next=/\/example.com&redirect=/\/example.com&redir=/\/example.com&rurl=/\/example.com
 redirect?url=/\/example.com&next=/\/example.com&redirect=/\/example.com&redir=/\/example.com&rurl=/\/example.com&redirect_uri=/\/example.com
 redirect?url=http://example.com&next=http://example.com&redirect=http://example.com&redir=http://example.com&rurl=http://example.com
 redirect?url=Https://example.com&next=Https://example.com&redirect=Https://example.com&redir=Https://example.com&rurl=Https://example.com&redirect_uri=Https://example.com
+<<<<<<< HEAD
+=======
 redirect_scripts
+>>>>>>> dev
 redirection
 redirections
 redirector
@@ -21089,10 +21202,17 @@ signin.html
 Signin.html
 signin.jsp
 Signin.jsp
+<<<<<<< HEAD
+=======
 signin.pl
+>>>>>>> dev
 Signin.pl
-Signin.py
+signin.pl
 signin.py
+<<<<<<< HEAD
+Signin.py
+=======
+>>>>>>> dev
 Signin.rb
 signin.rb
 signin.shtml
@@ -21131,8 +21251,8 @@ simple.jsp
 simple_captcha
 simple_search
 simplecommands
-simpledad
 SIMPLEDAD
+simpledad
 simpleFormServlet
 simpleJSP
 simpleLogin
@@ -21286,9 +21406,12 @@ SiteServer/Admin/commerce/foundation/driver
 SiteServer/Admin/commerce/foundation/DSN
 SiteServer/admin/findvserver
 SiteServer/Admin/knowledge/dsmgr/default
-siteserver/publishing/viewcode
 SiteServer/Publishing/viewcode
+<<<<<<< HEAD
+siteserver/publishing/viewcode
+=======
 sitespeed
+>>>>>>> dev
 sitestats
 sitetemplate
 sitetest
@@ -21601,6 +21724,12 @@ sozai
 sp
 sp1
 sp2
+<<<<<<< HEAD
+sp2gdr
+SP2QFE
+sp2qfe
+=======
+>>>>>>> dev
 spa
 space
 space-username
@@ -25148,6 +25277,14 @@ win2000
 win2k
 win32
 win95
+<<<<<<< HEAD
+WIN95
+Win98
+WIN98
+Win9x
+win9x
+=======
+>>>>>>> dev
 wind
 window
 window-repair

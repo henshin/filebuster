@@ -46,7 +46,10 @@ ${111*111}
 .DS_Store
 .env
 .example.com
+<<<<<<< HEAD
+=======
 .FBCIndex
+>>>>>>> dev
 .forward
 .ftpquota
 .git
@@ -126,7 +129,10 @@ ${111*111}
 .web
 .well-known
 .well-known/jwks.json
+<<<<<<< HEAD
+=======
 .zip
+>>>>>>> dev
 /%09/example.com
 /%5cexample.com
 //%09/example.com
@@ -308,13 +314,20 @@ ${111*111}
 ;/..;/
 ;name=test/
 <>//example.com
+<<<<<<< HEAD
+=======
 ?sling:authRequestLogin=1
+>>>>>>> dev
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com
 ?url=//example.com&next=//example.com&redirect=//example.com&redir=//example.com&rurl=//example.com&redirect_uri=//example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com
 ?url=/\/example.com&next=/\/example.com&redirect=/\/example.com&redirect_uri=/\/example.com
 ?url=http://example.com&next=http://example.com&redirect=http://example.com&redir=http://example.com&rurl=http://example.com
 ?url=Https://example.com&next=Https://example.com&redirect=Https://example.com&redir=Https://example.com&rurl=Https://example.com&redirect_uri=Https://example.com
+<<<<<<< HEAD
+@
+=======
+>>>>>>> dev
 \/\/example.com/
 \/example.com/
 _
@@ -876,7 +889,10 @@ asset
 assetmanagement
 assets
 assets/file:%2f%2f/
+<<<<<<< HEAD
+=======
 associate
+>>>>>>> dev
 ast
 async
 at
@@ -1391,7 +1407,10 @@ compaq
 compare
 comparison
 compat
+<<<<<<< HEAD
+=======
 compile
+>>>>>>> dev
 compilerconfig.json
 complaint
 complaints

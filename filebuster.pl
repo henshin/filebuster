@@ -30,7 +30,6 @@ use Cache::LRU;
 #use IO::Socket;
 use Socket;
 use IO::Socket::SSL; # for SSL
-#use Socket qw(pack_sockaddr_in inet_ntoa inet_aton);
 use URI::URL;
 use POSIX;
 use IO::Async::Timer::Periodic;
@@ -45,8 +44,6 @@ use constant DEF_NUMRETRIES		=> 2;
 use constant DEF_PATTERN		=> '.';
 use constant DEF_HIDECODE		=> "404";
 use constant DEF_HTTPMETHOD		=> "GET";
-
-
 
 my $program;
 ($program = $0) =~ s#.*/##;
@@ -63,7 +60,6 @@ print <<'EOF';
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
       \/                 \/       \/           \/            \/    v0.9.5 
                                        HTTP fuzzer by Henshin (@henshinpt)
- 
 EOF
 
 my $url;
@@ -227,6 +223,7 @@ if(defined($hidecode)){
 	if($hidecode !~ /^[\d,]*$/){
 		die "[-] Invalid value for argument --hc. Only numbers and commas allowed\n\n";
 	}
+	$hidecode = "404,$hidecode" if($hidecode ne DEF_HIDECODE); # always filter 404s
 }
 
 #format the url properly
@@ -676,32 +673,22 @@ sub SubmitGetList{
 			$url = $modurl;
 		}
 		&Log("\n$body\n\n") if $debug;
-
+		#filter the common error responses without details
+		next if ((($ret{"length"} == 0) || ($ret{"length"} == 226)) && $ret{"httpcode"} == 400); #Apache
+		next if ($ret{"length"} =~ /18\d/ && $ret{"httpcode"} == 400); #Nginx on Ubuntu but should cover other OSs too
+		
 		next if (defined $hidestringheaders && grep(/$hidestringheaders/i, @{$ret{"headers"}})>0);
 		next if (defined $hidestring && $ret{"content"} =~ /$hidestring/);
 		next if (defined $force && $ret{"httpcode"} == "500");
 		#next if (defined $hidelength && $ret{"length"} == $hidelength);
 		if (defined $hidelength){
 			my @hidelengths = split(/,/, $hidelength);
-			my $skip = undef;
-			foreach my $len (@hidelengths){
-				if($ret{"length"} == $len){
-					$skip = 1;
-					last;
-				}
-			}
-			next if ($skip);
+			next if (grep(/^$ret{"length"}$/,@hidelengths)>0);
 		}
 		if (defined $hidecode){
 			my @hidecodes = split(/,/, $hidecode);
 			my $skip = undef;
-			foreach my $code (@hidecodes){
-				if($ret{"httpcode"} == $code){
-					$skip = 1;
-					last;
-				}
-			}
-			next if ($skip);
+			next if (grep(/^$ret{"httpcode"}$/,@hidecodes)>0);
 		}
 
 		{
