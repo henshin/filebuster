@@ -46,8 +46,9 @@ print <<'EOF';
   |    __)  |  |  | _/ __ \|    |  _/  |  \/  ___/\   __\/ __ \_  __ \
   |     \   |  |  |_\  ___/|    |   \  |  /\___ \  |  | \  ___/|  | \/
   \___  /   |__|____/\___  >______  /____//____  > |__|  \___  >__|   
-      \/                 \/       \/           \/            \/    v0.9.6 
-                                       HTTP fuzzer by Henshin (@henshinpt)
+      \/                 \/       \/           \/            \/    v0.9.7 
+                              HTTP Content Scanner by Henshin (@henshinpt)
+    
 EOF
 
 my $url;
@@ -417,7 +418,7 @@ $furlargs{"proxy"} = $proxy if ($proxy);
 print "[*] Testing connection to the website host '$host' ...\n";
 my $sessionpayload = "$scheme://$netloc/";
 my %ret = &SubmitGet($sessionpayload);
-if($ret{"httpcode"} == 500){
+if($ret{"code"} == 500){
 	if(lc($scheme) eq "https"){
 		print "[-] WAF bypass didn't work. Retrying with fallback ciphers\n";
 		%sslopts = (
@@ -427,7 +428,7 @@ if($ret{"httpcode"} == 500){
 		);
 		%ret = &SubmitGet($sessionpayload);
 	}
-	if($ret{"httpcode"} == 500){
+	if($ret{"code"} == 500){
 		if(!$force){
 			print "[-] Could not connect to the website. Verify if the host is reachable and the web services are up!\n";
 			if($ret{"msg"}){
@@ -445,7 +446,7 @@ if($ret{"httpcode"} == 500){
 		}
 	}
 }
-print "[+] Connected successfuly - Host returned HTTP code ${ret{'httpcode'}}\n\n";
+print "[+] Connected successfuly - Host returned HTTP code ${ret{'code'}}\n\n";
 print "[CODE] [LENGTH] [URL]\n";
 
 my @paths:shared=();
@@ -455,8 +456,9 @@ my @joinable = ();
 my @threadlists=();
 my $totaldone:shared = 0;
 
-
 threads->create(\&CountProgress) unless $quiet;
+
+my %firstrequest:shared;
 
 do{
 	$path = shift(@paths);
@@ -464,6 +466,7 @@ do{
 	if(defined($path) && $path ne ""){ 
 		$url = $path."{fuzz}";
 	}
+	
 	#Work splitter
 	for(my $j=0; $j<scalar(@allwords); $j++){
 		my $word = $allwords[$j];
@@ -475,7 +478,19 @@ do{
 		$sessionpayload = $url;
 		$sessionpayload =~ s/{fuzz}/$word/;
 		my $arrayindex = $j % $maxnumthreads;
-		push @{$threadlists[$arrayindex]}, $sessionpayload;
+		#capture the first request for length analysis
+		if(! defined $firstrequest{"url"}){
+			$firstrequest{"url"} = $sessionpayload;
+			my %ret = &SubmitGet($sessionpayload);
+			# we save the test connection response length and automatically filter all similar responses (this is useful not to report payloads based on URL arguments which do not cause any effect if not processed)
+			$firstrequest{"code"} = $ret{"code"};
+			$firstrequest{"length"} = $ret{"length"};
+			$firstrequest{"url"}.="  [Similar responses will be ommited automatically]" if ($ret{"code"}==200);
+			&PrintResult($firstrequest{"url"}, $firstrequest{"code"}, $firstrequest{"length"}, $ret{"body"});
+			$totaldone++;
+		}else{
+			push @{$threadlists[$arrayindex]}, $sessionpayload;
+		}
 	}
 
 	for(my $i=0; $i<$maxnumthreads && $i<scalar(@threadlists); $i++){
@@ -492,9 +507,9 @@ do{
 		foreach my $thr (@joinable) {
 			if ($thr->is_joinable()) {
 				$thr->join;
-				
 			}
 		}
+		usleep(100);
 	}
 	@threadlists=();
 }while($recursive && scalar(@paths));
@@ -543,9 +558,9 @@ sub SubmitGet{
 		'url' => $url,
 	);
 	my %rethash = (
-		"httpcode" => $code, 
+		"code" => $code, 
 		"headers" => $headers, 
-		"content" => $body, 
+		"body" => $body, 
 		"payload" => $url, 
 		"msg" => $msg, 
 		"length" => length($body)
@@ -584,11 +599,7 @@ sub SubmitGetList{
 		"skins",
 	);
 	
-	my @dirlistpatterns = (
-		'<title>Index of \/.*?<\/title>', # Apache & nginx
-		'<a href="\/.*?">\[To Parent Directory\]<\/a>', # IIS
-		'<h\d>Directory listing for \/.*?<\/h\d>', # Python SimpleHTTPServer
-	);
+
 
 	#this will be used to analyze previous requests and make actions according to certain responses
 	my @respqueue;
@@ -610,7 +621,6 @@ sub SubmitGetList{
 		#make threads more resilient if errors happen
 		eval {
 			do{
-				
 				($minor_version, $code, $msg, $headers, $body) = $furl->request(
 					'method' => $method,
 					'url' => $url,
@@ -632,13 +642,18 @@ sub SubmitGetList{
 			next;
 		};
 		my %ret = (
-			"httpcode" => $code, 
+			"code" => $code, 
 			"headers" => $headers, 
-			"content" => $body, 
+			"body" => $body, 
 			"msg" => $msg, 
 			"length" => length($body),
 		);
-	
+
+		#here we compare if the result is similar to the original first request. If code=200 and length are the same, lets ignore it.
+		if($ret{"code"} == 200 && $ret{"code"} == $firstrequest{"code"} && $ret{"length"} == $firstrequest{"length"}){
+			next;
+		}
+
 		#convert the headers array to hash
 		my %headers = @{$ret{"headers"}};
 		#update length if it comes in the header
@@ -663,13 +678,13 @@ sub SubmitGetList{
 			$url = $modurl;
 		}
 		&Log("\n$body\n\n") if $debug;
-		#filter the common error responses without details
-		next if ((($ret{"length"} == 0) || ($ret{"length"} == 226)) && $ret{"httpcode"} == 400); #Apache
-		next if ($ret{"length"} =~ /18\d/ && $ret{"httpcode"} == 400); #Nginx on Ubuntu but should cover other OSs too
 		
+		#filter the common error responses without details
+		next if ((($ret{"length"} == 0) || ($ret{"length"} == 226)) && $ret{"code"} == 400); #Apache
+		next if ($ret{"length"} =~ /18\d/ && $ret{"code"} == 400); #Nginx on Ubuntu but should cover other OSs too
 		next if (defined $hidestringheaders && grep(/$hidestringheaders/i, @{$ret{"headers"}})>0);
-		next if (defined $hidestring && $ret{"content"} =~ /$hidestring/);
-		next if (defined $force && $ret{"httpcode"} == "500");
+		next if (defined $hidestring && $ret{"body"} =~ /$hidestring/);
+		next if (defined $force && $ret{"code"} == "500");
 		#next if (defined $hidelength && $ret{"length"} == $hidelength);
 		if (defined $hidelength){
 			my @hidelengths = split(/,/, $hidelength);
@@ -678,53 +693,70 @@ sub SubmitGetList{
 		if (defined $hidecode){
 			my @hidecodes = split(/,/, $hidecode);
 			my $skip = undef;
-			next if (grep(/^$ret{"httpcode"}$/,@hidecodes)>0);
+			next if (grep(/^$ret{"code"}$/,@hidecodes)>0);
 		}
-
 		{
-			my $color = 'reset';
-			$color = 'bright_green'		if($ret{"httpcode"} =~ /2\d\d/);
-			$color = 'bright_yellow' 	if($ret{"httpcode"} =~ /3\d\d/);
-			$color = 'bright_red' 		if($ret{"httpcode"} =~ /4\d\d/);
-			$color = 'bright_cyan' 		if($ret{"httpcode"} =~ /401/);
-			$color = 'bright_magenta' 	if($ret{"httpcode"} =~ /5\d\d/);
-
 			#preventing threads from output prints at the same time
 			lock($semaphore);
-			&PrintSequence("\e[K");
-			&PrintColor('bold white', '[');
-			&PrintColor($color, $ret{"httpcode"});
-			&PrintColor('bold white', ']');
-			
-			#add error details if we receive 500 error
-			if($ret{"httpcode"} == 500){
-				my $errmsg = $ret{"msg"};
-				$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
-				chomp($errmsg); 
-				$url .= " :: $errmsg";
-			}
-			my $str = sprintf("   %-7s  %-80s ", $ret{"length"}, $url);
-			print $str;
-			#Check for directory listing
-			if($ret{"httpcode"} == 200){
-				foreach my $pattern (@dirlistpatterns){
-					if($ret{"content"} =~ /$pattern/i){
-						&PrintColor('bold white', '[');
-						&PrintColor('bright_yellow', "Directory listing");
-						&PrintColor('bold white', ']');
-					}
-				}
-			}
-			if($isqueued){
-				&PrintColor('bold white', '[');
-				&PrintColor('bright_yellow', "QUEUED");
-				&PrintColor('bold white', ']');
-			}
-			print "\n";
-			$str = "[".$ret{"httpcode"}."]   $str\n";
-			&Log($str);
+			&PrintResult($url, $ret{"code"}, $ret{"length"}, $ret{"body"}, $msg, $isqueued);
 		}
 	}
+}
+
+
+sub PrintResult{
+	my ($url, $code, $length, $body, $msg, $isqueued) = @_;
+
+	my @dirlistpatterns = (
+		'<title>Index of \/.*?<\/title>', # Apache & nginx
+		'<a href="\/.*?">\[To Parent Directory\]<\/a>', # IIS
+		'<h\d>Directory listing for \/.*?<\/h\d>', # Python SimpleHTTPServer
+	);
+
+	my $color = 'reset';
+	$color = 'bright_green'		if($code =~ /2\d\d/);
+	$color = 'bright_yellow' 	if($code =~ /3\d\d/);
+	$color = 'bright_red' 		if($code =~ /4\d\d/);
+	$color = 'bright_cyan' 		if($code =~ /401/);
+	$color = 'bright_magenta' 	if($code =~ /5\d\d/);
+
+	
+	&PrintSequence("\e[K");
+	&PrintColor('bold white', '[');
+	&PrintColor($color, $code);
+	&PrintColor('bold white', ']');
+	
+	#add error details if we receive 500 error
+	if($code == 500){
+		my $errmsg = $msg;
+		$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
+		chomp($errmsg); 
+		$url .= " :: $errmsg";
+	}
+	my $str = sprintf("   %-7s  %-80s ", $length, $url);
+	print $str;
+	#Check for directory listing
+	if($code == 200){
+		if(scalar(@dirlistpatterns) == 0 ){
+			print "damn it";
+		}
+		foreach my $pattern (@dirlistpatterns){
+			if($body =~ /$pattern/i){
+				&PrintColor('bold white', '[');
+				&PrintColor('bright_yellow', "Directory listing");
+				&PrintColor('bold white', ']');
+			}
+		}
+	}
+	if($isqueued){
+		&PrintColor('bold white', '[');
+		&PrintColor('bright_yellow', "QUEUED");
+		&PrintColor('bold white', ']');
+	}
+	print "\n";
+	$str = "[".$code."]   $str\n";
+	&Log($str);
+
 }
 
 
