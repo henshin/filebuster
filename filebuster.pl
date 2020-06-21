@@ -571,6 +571,9 @@ sub SubmitGet{
 
 sub SubmitGetList{
 	my($index) = @_;
+	#check for when the list has less entries than the number of threads
+	return if (!defined($threadlists[$index]));
+	
 	my @urllist = @{$threadlists[$index]};
 
 	my $furl = Furl::HTTP->new(%furlargs);
