@@ -732,17 +732,18 @@ sub PrintResult{
 	#add error details if we receive 500 error
 	if($code == 500){
 		my $errmsg = $msg;
-		$errmsg =~ s#(.*?) at .?/.+#$1#; #hide line details
+		$errmsg =~ s#(.*?) at .+#$1#; #hide line details
+		$errmsg =~ s#Internal Response: ##; #superfluous information
 		chomp($errmsg); 
+		#Rewrite common error responses to a shorter format
+		$errmsg = "Timeout" if ( $errmsg =~ /Cannot read response header: timeout/);
+		$errmsg = "No response from server" if ( $errmsg =~ /Unexpected EOF while reading response header/);
 		$url .= " :: $errmsg";
 	}
 	my $str = sprintf("   %-7s  %-80s ", $length, $url);
 	print $str;
 	#Check for directory listing
 	if($code == 200){
-		if(scalar(@dirlistpatterns) == 0 ){
-			print "damn it";
-		}
 		foreach my $pattern (@dirlistpatterns){
 			if($body =~ /$pattern/i){
 				&PrintColor('bold white', '[');
