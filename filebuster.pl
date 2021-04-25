@@ -523,7 +523,7 @@ close OUTPUT if (defined($outputfilename));
 
 exit 0;
 
-#################################### FUNCTIONS ######################################
+#################################### FUNCTIONS #########################################
 
 sub CountProgress{
 	my $current = 0;
