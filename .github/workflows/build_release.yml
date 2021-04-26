@@ -6,12 +6,8 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    tags:
+      - 'v*'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -25,6 +21,11 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      # Populates the Tag version to use in the rest of the action
+      - name: Populate Tag
+        run: |
+          echo "TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
       # Runs a set of commands using the runners shell
       - name: Pack
         run: |
@@ -33,10 +34,12 @@ jobs:
           sudo apt install cpanminus build-essential libperl-dev libssl-dev zlib1g-dev
           sudo cpan install -T PAR::Packer YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop Net::SSLeay
           pp -o filebuster -l libssl.so.1.1 -l libcrypto.so.1.1 -M "IO::Async::Loop::**" -M "Metrics::Any::Adapter::**" -M "IO::Async::Internals::**" filebuster.pl
+          chmod +x filebuster
+          zip filebuster_release_${{env.TAG}}.zip filebuster wordlists/*.txt
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: filebuster
+          name: FileBuster ${{env.TAG}}
+          files: filebuster_release*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
