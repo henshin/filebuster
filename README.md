@@ -48,21 +48,10 @@ Then you will be able to use it system wide
 
 ## Packaged Binary
 
-Because installing all the dependencies is sometimes not possible, I'm providing a pre-packed binary with all the dependencies built in. It works even on slim Linux distributions. This was achieved by using Perl Packer `pp`. You can download it from the Releases section.
+Because installing all the dependencies is sometimes not possible, I'm providing a pre-packed binary with all the dependencies built in. It works even on slim Linux distributions. This was achieved by using Perl Packer `pp`. I've integrated this step in the repo so the packaged version will be automatically built when a new version is released. You can download the latest version from the [Releases](https://github.com/henshin/filebuster/releases) section.
 
-If you don't trust my binary, you can pack the binary yourself on a system which contains all the Perl dependencies and then move that binary to other systems. You will need `pp` command line tool and some libraries. Here's how to do it:
-```bash
-sudo apt update
-sudo apt install cpanminus build-essential libperl-dev libssl-dev zlib1g-dev
-```
-Install Perl dependencies:
-```bash
-sudo cpan install -T PAR::Packer YAML Furl Benchmark Net::DNS::Lite List::MoreUtils IO::Socket::SSL URI::Escape HTML::Entities IO::Socket::Socks::Wrapper URI::URL Cache::LRU IO::Async::Timer::Periodic IO::Async::Loop Net::SSLeay
-```
-Now you should be able to execute `pp` and pack your `filebuster` binary:
-```bash
-pp -o filebuster -l libssl.so.1.1 -l libcrypto.so.1.1 -M "IO::Async::Loop::**" -M "Metrics::Any::Adapter::**" -M "IO::Async::Internals::**" filebuster.pl 
-```
+If you want to pack it yourself, check out the Action's workflow steps and you will find there all the commands you need to run.
+
 ## Syntax
 On the most basic form, Filebuster can be run just using the following syntax:
 ```bash
