@@ -436,6 +436,7 @@ if($ret{"code"} == 500){
 			'SSL_cipher_list' => "", 
 			'SSL_honor_cipher_order' => 1,
 		);
+		$sslopts{"SSL_version"} = $sslversion if ($sslversion);
 		%ret = &SubmitGet($sessionpayload);
 	}
 	if($ret{"code"} == 500){
