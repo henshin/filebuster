@@ -28,7 +28,7 @@ use List::Util qw(shuffle);
 
 #Constants
 use constant DEF_MAXNUMTHREADS	=> 3;
-use constant DEF_TIMEOUT		=> 5;
+use constant DEF_TIMEOUT		=> 8;
 use constant DEF_NUMRETRIES		=> 2;
 use constant DEF_PATTERN		=> '.';
 use constant DEF_HIDECODE		=> "404";
@@ -157,7 +157,7 @@ if($help){
                                 specify multiple lengths seperated by comma. Example: 12105,0,100 
         --hs <string>           Hides responses with the specified string/regex on the HTTP response
         --hsh <string>          Hides responses with the specified string/regex on the HTTP headers
-        --timeout <secs>        Timeout period for the requests. Default: 10 seconds
+        --timeout <secs>        Timeout period for the requests. Default: 8 seconds
         --retries <num>         Maximum number of retries per request. FileBuster will attempt to perform 
                                 the number of retries specified to confirm if it's indeed an error or a 
                                 false positive. Default: 2 retries
@@ -177,7 +177,7 @@ if($help){
                                 and should look like ABCDEF~1. Filebuster will cut off everything after the ~1 
                                 and use that as a search pattern on the dictionaries provided. 
         --debug                 This will output the contents of each HTTP response to the logfile
-        -q                      Quiet mode - Filebuster won't show the urls beeing scanned
+        -q                      Quiet mode - Filebuster won't show the scanning progress
         -h, --help              This screen
 
 EOF
@@ -413,11 +413,15 @@ my %furlargs = (
 			#custom cached DNS resolution - Only 1 DNS per scan
             my ($host, $port, $timeout) = @_;
 			#print "HOST: $host PORT: $port TIMEOUT: $timeout \n";
-			my $addr = inet_aton(( $host =~ s/:\d+$//rg )); #this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+			#this gets called many times throughout the scan. it shouldn't hurt the performance since it's not performing DNS requests, just translating to binary
+			my $addr = inet_aton(( $host =~ s/:\d+$//rg )); 
+			if(!defined($addr)){
+				die "[-] Couldn't resolve host $host\n";
+			}
 			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
         },
 	'timeout'   => 3,
-	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:95.0) Gecko/20100101 Firefox/95.0',
+	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
@@ -743,9 +747,13 @@ sub PrintResult{
 	#add error details if we receive 500 error
 	if($code == 500){
 		my $errmsg = $msg;
-		$errmsg =~ s#(.*?) at .+#$1#; #hide line details
-		$errmsg =~ s#Internal Response: ##; #superfluous information
-		chomp($errmsg); 
+		if(!defined($msg)){
+			$errmsg = "Unknown error";
+		}else{
+			$errmsg =~ s#(.*?) at .+#$1#; #hide line details
+			$errmsg =~ s#Internal Response: ##; #superfluous information
+			chomp($errmsg);
+		}
 		#Rewrite common error responses to a shorter format
 		$errmsg = "Timeout" if ( $errmsg =~ /Cannot read response header: timeout/);
 		$errmsg = "No response from server" if ( $errmsg =~ /Unexpected EOF while reading response header/);
