@@ -421,7 +421,7 @@ my %furlargs = (
 			pack_sockaddr_in($port, $addr);#inet_aton($host,$timeout));
         },
 	'timeout'   => 3,
-	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36',
+	'agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.5481.78 Safari/537.36',
 	'max_redirects' => 0,
 	ssl_opts => \%sslopts,
 	'headers' => \@httpheaders,
